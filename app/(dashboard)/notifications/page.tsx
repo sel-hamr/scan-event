@@ -1,21 +1,14 @@
-"use client";
-
-import { mockNotifications } from "@/lib/mock-data";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, FilterIcon, MoreHorizontalIcon, BellIcon, InfoIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon } from "lucide-react";
+import { SearchIcon, FilterIcon, BellIcon, InfoIcon, AlertTriangleIcon, CheckCircleIcon, XCircleIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDateTime } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { NotificationActions, MarkAllReadButton } from "@/components/notification-actions";
+import { auth } from "@/auth";
 
 const getTypeIcon = (type: string) => {
-  switch (type) {
+  switch (type.toLowerCase()) {
     case 'info': return <InfoIcon className="h-5 w-5 text-blue-500" />;
     case 'success': return <CheckCircleIcon className="h-5 w-5 text-emerald-500" />;
     case 'warning': return <AlertTriangleIcon className="h-5 w-5 text-amber-500" />;
@@ -25,7 +18,7 @@ const getTypeIcon = (type: string) => {
 };
 
 const getTypeBg = (type: string) => {
-  switch (type) {
+  switch (type.toLowerCase()) {
     case 'info': return 'bg-blue-500/10 border-blue-500/20';
     case 'success': return 'bg-emerald-500/10 border-emerald-500/20';
     case 'warning': return 'bg-amber-500/10 border-amber-500/20';
@@ -34,7 +27,23 @@ const getTypeBg = (type: string) => {
   }
 };
 
-export default function NotificationsPage() {
+export default async function NotificationsPage() {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[50vh]">
+        <h2 className="text-xl font-bold">Please log in to see your notifications</h2>
+      </div>
+    );
+  }
+
+  const notifications = await prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' }
+  });
+
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 max-w-4xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -50,17 +59,15 @@ export default function NotificationsPage() {
           <Button variant="outline" size="icon" className="shrink-0 rounded-xl">
             <FilterIcon className="h-4 w-4" />
           </Button>
-          <Button variant="outline" className="shrink-0 rounded-xl">
-            Mark all as read
-          </Button>
+          <MarkAllReadButton userId={userId} />
         </div>
       </div>
 
       <Card className="rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur overflow-hidden">
         <CardContent className="p-0 divide-y divide-border/50">
-          {mockNotifications.map((notif) => (
+          {notifications.map((notif) => (
             <div key={notif.id} className={cn(
-              "p-4 sm:p-6 flex items-start gap-4 transition-colors hover:bg-muted/30 cursor-pointer",
+              "p-4 sm:p-6 flex items-start gap-4 transition-colors hover:bg-muted/30",
               !notif.read && "bg-muted/10 relative"
             )}>
               {/* Unread dot indicator */}
@@ -81,7 +88,7 @@ export default function NotificationsPage() {
                     {notif.title}
                   </h3>
                   <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-                    {formatDateTime(notif.created_at)}
+                    {formatDateTime(notif.createdAt)}
                   </span>
                 </div>
                 
@@ -89,35 +96,14 @@ export default function NotificationsPage() {
                   {notif.body}
                 </p>
                 
-                {!notif.read && (
-                  <div className="pt-2 flex gap-2">
-                    <Button variant="secondary" size="sm" className="h-7 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
-                      Mark as read
-                    </Button>
-                  </div>
-                )}
+                <div className="pt-2">
+                  <NotificationActions notificationId={notif.id} isRead={notif.read} />
+                </div>
               </div>
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground shrink-0">
-                    <MoreHorizontalIcon className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                  {notif.read ? (
-                    <DropdownMenuItem>Mark as unread</DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem>Mark as read</DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">Delete notification</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           ))}
           
-          {mockNotifications.length === 0 && (
+          {notifications.length === 0 && (
             <div className="py-12 flex flex-col items-center justify-center text-center">
               <BellIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
               <h3 className="text-lg font-medium">All caught up!</h3>

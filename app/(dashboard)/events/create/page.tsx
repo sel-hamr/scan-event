@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, PlusIcon, TrashIcon, Loader2Icon } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { mockSpeakers, mockCompanies } from "@/lib/mock-data";
 import {
@@ -32,9 +33,20 @@ const STEPS = [
 ];
 
 export default function CreateEventPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Forms states (placeholder for real form handling)
+  // Forms states
+  const [eventDetails, setEventDetails] = useState({
+    title: "",
+    dateStart: "",
+    dateEnd: "",
+    location: "",
+    companyId: "",
+    description: ""
+  });
+
   const [sessions, setSessions] = useState<{title: string, speaker: string, start: string, end: string, description: string}[]>([]);
   const [tickets, setTickets] = useState<{type: string, price: string, capacity: string}[]>([]);
 
@@ -52,9 +64,48 @@ export default function CreateEventPage() {
 
   const addSession = () => setSessions([...sessions, { title: "", speaker: "", start: "", end: "", description: "" }]);
   const removeSession = (index: number) => setSessions(sessions.filter((_, i) => i !== index));
+  const updateSession = (index: number, field: string, value: string) => {
+    const newSessions = [...sessions];
+    newSessions[index] = { ...newSessions[index], [field]: value };
+    setSessions(newSessions);
+  };
 
   const addTicket = () => setTickets([...tickets, { type: "", price: "", capacity: "" }]);
   const removeTicket = (index: number) => setTickets(tickets.filter((_, i) => i !== index));
+  const updateTicket = (index: number, field: string, value: string) => {
+    const newTickets = [...tickets];
+    newTickets[index] = { ...newTickets[index], [field]: value };
+    setTickets(newTickets);
+  };
+
+  const handlePublish = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...eventDetails,
+          sessions,
+          tickets
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create event");
+      }
+
+      router.push("/events");
+      router.refresh();
+    } catch (error) {
+      console.error("Error creating event:", error);
+      alert("Failed to create event. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
@@ -121,26 +172,53 @@ export default function CreateEventPage() {
             <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
               <div className="grid gap-2">
                 <Label htmlFor="title">Event Title</Label>
-                <Input id="title" placeholder="e.g. Future of Design Conference" className="rounded-xl" />
+                <Input 
+                  id="title" 
+                  placeholder="e.g. Future of Design Conference" 
+                  className="rounded-xl" 
+                  value={eventDetails.title}
+                  onChange={(e) => setEventDetails({...eventDetails, title: e.target.value})}
+                />
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="date-start">Start Date</Label>
-                  <Input id="date-start" type="date" className="rounded-xl" />
+                  <Input 
+                    id="date-start" 
+                    type="date" 
+                    className="rounded-xl" 
+                    value={eventDetails.dateStart}
+                    onChange={(e) => setEventDetails({...eventDetails, dateStart: e.target.value})}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="date-end">End Date</Label>
-                  <Input id="date-end" type="date" className="rounded-xl" />
+                  <Input 
+                    id="date-end" 
+                    type="date" 
+                    className="rounded-xl" 
+                    value={eventDetails.dateEnd}
+                    onChange={(e) => setEventDetails({...eventDetails, dateEnd: e.target.value})}
+                  />
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="location">Location or URL</Label>
-                  <Input id="location" placeholder="e.g. San Francisco, CA or Zoom Link" className="rounded-xl" />
+                  <Input 
+                    id="location" 
+                    placeholder="e.g. San Francisco, CA or Zoom Link" 
+                    className="rounded-xl" 
+                    value={eventDetails.location}
+                    onChange={(e) => setEventDetails({...eventDetails, location: e.target.value})}
+                  />
                 </div>
                 <div className="grid gap-2 w-full">
                   <Label htmlFor="company">Company</Label>
-                  <Select>
+                  <Select 
+                    value={eventDetails.companyId}
+                    onValueChange={(val: string | null) => setEventDetails({...eventDetails, companyId: val || ""})}
+                  >
                     <SelectTrigger className="rounded-xl w-full" id="company">
                       <SelectValue placeholder="Select a company" />
                     </SelectTrigger>
@@ -156,7 +234,13 @@ export default function CreateEventPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" placeholder="Describe your event..." className="min-h-32 rounded-xl" />
+                <Textarea 
+                  id="description" 
+                  placeholder="Describe your event..." 
+                  className="min-h-32 rounded-xl" 
+                  value={eventDetails.description}
+                  onChange={(e) => setEventDetails({...eventDetails, description: e.target.value})}
+                />
               </div>
             </div>
           )}
@@ -189,17 +273,25 @@ export default function CreateEventPage() {
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
                             <Label>Session Title</Label>
-                            <Input placeholder="e.g. Keynote Speech" className="rounded-xl" />
+                            <Input 
+                              placeholder="e.g. Keynote Speech" 
+                              className="rounded-xl" 
+                              value={session.title}
+                              onChange={(e) => updateSession(index, "title", e.target.value)}
+                            />
                           </div>
                           <div className="grid gap-2 w-full">
                             <Label>Speaker Name</Label>
-                            <Select>
+                            <Select 
+                              value={session.speaker}
+                              onValueChange={(val: string | null) => updateSession(index, "speaker", val || "")}
+                            >
                               <SelectTrigger className="rounded-xl w-full">
                                 <SelectValue placeholder="Select a speaker" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
                                 {mockSpeakers.map((speaker) => (
-                                  <SelectItem key={speaker.id} value={speaker.name}>
+                                  <SelectItem key={speaker.id} value={speaker.id}>
                                     {speaker.name}
                                   </SelectItem>
                                 ))}
@@ -209,16 +301,31 @@ export default function CreateEventPage() {
                         </div>
                         <div className="grid gap-2">
                           <Label>Description</Label>
-                          <Textarea placeholder="Brief description of the session..." className="rounded-xl resize-none" />
+                          <Textarea 
+                            placeholder="Brief description of the session..." 
+                            className="rounded-xl resize-none" 
+                            value={session.description}
+                            onChange={(e) => updateSession(index, "description", e.target.value)}
+                          />
                         </div>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
                             <Label>Start Time</Label>
-                            <Input type="time" className="rounded-xl" />
+                            <Input 
+                              type="time" 
+                              className="rounded-xl" 
+                              value={session.start}
+                              onChange={(e) => updateSession(index, "start", e.target.value)}
+                            />
                           </div>
                           <div className="grid gap-2">
                             <Label>End Time</Label>
-                            <Input type="time" className="rounded-xl" />
+                            <Input 
+                              type="time" 
+                              className="rounded-xl" 
+                              value={session.end}
+                              onChange={(e) => updateSession(index, "end", e.target.value)}
+                            />
                           </div>
                         </div>
                       </div>
@@ -261,7 +368,10 @@ export default function CreateEventPage() {
                         <div className="grid md:grid-cols-3 gap-4">
                           <div className="grid gap-2 w-full">
                             <Label>Ticket Type</Label>
-                            <Select>
+                            <Select 
+                              value={ticket.type}
+                              onValueChange={(val: string | null) => updateTicket(index, "type", val || "")}
+                            >
                               <SelectTrigger className="rounded-xl w-full">
                                 <SelectValue placeholder="Select ticket type" />
                               </SelectTrigger>
@@ -275,11 +385,23 @@ export default function CreateEventPage() {
                           </div>
                           <div className="grid gap-2">
                             <Label>Price ($)</Label>
-                            <Input type="number" placeholder="e.g. 99" className="rounded-xl" />
+                            <Input 
+                              type="number" 
+                              placeholder="e.g. 99" 
+                              className="rounded-xl" 
+                              value={ticket.price}
+                              onChange={(e) => updateTicket(index, "price", e.target.value)}
+                            />
                           </div>
                           <div className="grid gap-2">
                             <Label>Capacity</Label>
-                            <Input type="number" placeholder="e.g. 500" className="rounded-xl" />
+                            <Input 
+                              type="number" 
+                              placeholder="e.g. 500" 
+                              className="rounded-xl" 
+                              value={ticket.capacity}
+                              onChange={(e) => updateTicket(index, "capacity", e.target.value)}
+                            />
                           </div>
                         </div>
                       </div>
@@ -299,7 +421,7 @@ export default function CreateEventPage() {
           <Button 
             variant="outline" 
             onClick={handlePrev} 
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || isLoading}
             className="rounded-xl"
           >
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
@@ -312,12 +434,23 @@ export default function CreateEventPage() {
               <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Link href="/events">
-              <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-                <CheckCircle2Icon className="mr-2 h-4 w-4" />
-                Publish Event
-              </Button>
-            </Link>
+            <Button 
+              onClick={handlePublish} 
+              disabled={isLoading}
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 min-w-32"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2Icon className="mr-2 h-4 w-4" />
+                  Publish Event
+                </>
+              )}
+            </Button>
           )}
         </CardFooter>
       </Card>

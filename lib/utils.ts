@@ -15,18 +15,18 @@ export function formatCurrency(amount: number) {
   }).format(amount);
 }
 
-export function formatDateTime(dateString: string) {
+export function formatDateTime(dateString: string | Date) {
   try {
     return format(new Date(dateString), "MMM dd, yyyy h:mm a");
   } catch (e) {
-    return dateString;
+    return String(dateString);
   }
 }
 
-export function formatDate(dateString: string) {
+export function formatDate(dateString: string | Date) {
   try {
     return format(new Date(dateString), "MMM dd, yyyy");
   } catch (e) {
-    return dateString;
+    return String(dateString);
   }
 }

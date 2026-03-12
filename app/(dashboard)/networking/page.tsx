@@ -1,12 +1,10 @@
-"use client";
-
-import { mockNetworking } from "@/lib/mock-data";
+import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SearchIcon, FilterIcon, MoreHorizontalIcon, UsersIcon, CheckIcon, XIcon, MessageSquareIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDateTime } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -15,9 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NetworkingCardActions } from "@/components/networking-card-actions";
 
 const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case 'accepted': return 'bg-emerald-500/10 text-emerald-500 border-none';
     case 'pending': return 'bg-amber-500/10 text-amber-500 border-none';
     case 'rejected': return 'bg-destructive/10 text-destructive border-none';
@@ -25,7 +24,16 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-export default function NetworkingPage() {
+export default async function NetworkingPage() {
+  const requests = await prisma.networkingRequest.findMany({
+    include: {
+      sender: true,
+      receiver: true,
+      event: true,
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -49,20 +57,21 @@ export default function NetworkingPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {mockNetworking.map((req) => (
+        {requests.map((req) => (
           <Card key={req.id} className="overflow-hidden rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur transition-all duration-200">
             <CardContent className="p-5 flex flex-col h-full relative">
               
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-border/50 shadow-sm">
+                    <AvatarImage src={req.sender.avatar || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
-                      {req.sender_name?.split(" ").map(n => n[0]).join("")}
+                      {req.sender.name.split(" ").map(n => n[0]).join("")}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-bold text-sm">{req.sender_name}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{req.event_title}</p>
+                    <h3 className="font-bold text-sm">{req.sender.name}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{req.event.title}</p>
                   </div>
                 </div>
                 
@@ -74,7 +83,7 @@ export default function NetworkingPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 rounded-xl">
                     <DropdownMenuItem>View Profile</DropdownMenuItem>
-                    {req.status === 'accepted' && (
+                    {req.status === 'ACCEPTED' && (
                       <DropdownMenuItem>Message Contact</DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
@@ -98,22 +107,9 @@ export default function NetworkingPage() {
                   </Badge>
                 </div>
                 
-                {req.status === 'pending' ? (
-                  <div className="flex gap-2">
-                    <Button size="icon" variant="outline" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive border-transparent bg-destructive/5">
-                      <XIcon className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" className="h-8 w-8 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">
-                      <CheckIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : req.status === 'accepted' ? (
-                  <Button size="sm" variant="outline" className="h-8 rounded-lg">
-                    <MessageSquareIcon className="h-3.5 w-3.5 mr-2" />
-                    Message
-                  </Button>
-                ) : (
-                  <span className="text-xs text-muted-foreground">{formatDateTime(req.created_at)}</span>
+                <NetworkingCardActions requestId={req.id} status={req.status} />
+                {req.status === 'REJECTED' && (
+                  <span className="text-xs text-muted-foreground">{formatDateTime(req.createdAt)}</span>
                 )}
               </div>
             </CardContent>

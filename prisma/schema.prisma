@@ -69,6 +69,7 @@ model User {
   name       String
   email      String   @unique
   role       UserRole @default(PARTICIPANT)
+  password   String?
   avatar     String?
   phone      String?
   companyId  String?  @map("company_id")
@@ -164,8 +165,8 @@ model Session {
 
 model Ticket {
   id      String       @id @default(cuid())
-  userId  String       @map("user_id")
-  user    User         @relation(fields: [userId], references: [id])
+  userId  String?      @map("user_id")
+  user    User?        @relation(fields: [userId], references: [id])
   eventId String       @map("event_id")
   event   Event        @relation(fields: [eventId], references: [id])
   type    TicketType   @default(STANDARD)

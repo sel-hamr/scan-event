@@ -213,6 +213,10 @@ export const mockEvents: Event[] = [
     attendees_count: 1250,
     tickets_sold: 1480,
     revenue: 89400,
+    date_end_registration: "2026-04-10",
+    date_with_hours: "09:00 - 18:00",
+    type_ticket: "Standard, VIP",
+    price: 50,
   },
   {
     id: "evt_002",
@@ -228,6 +232,10 @@ export const mockEvents: Event[] = [
     attendees_count: 0,
     tickets_sold: 320,
     revenue: 48000,
+    date_end_registration: "2026-05-15",
+    date_with_hours: "10:00 - 17:00",
+    type_ticket: "Standard",
+    price: 150,
   },
   {
     id: "evt_003",
@@ -242,6 +250,10 @@ export const mockEvents: Event[] = [
     attendees_count: 180,
     tickets_sold: 200,
     revenue: 6000,
+    date_end_registration: "2026-03-25",
+    date_with_hours: "18:00 - 21:00",
+    type_ticket: "Free",
+    price: 0,
   },
   {
     id: "evt_004",
@@ -256,6 +268,10 @@ export const mockEvents: Event[] = [
     attendees_count: 0,
     tickets_sold: 890,
     revenue: 178000,
+    date_end_registration: "2026-06-05",
+    date_with_hours: "09:00 - 16:00",
+    type_ticket: "Standard, VIP",
+    price: 100,
   },
   {
     id: "evt_005",
@@ -270,6 +286,10 @@ export const mockEvents: Event[] = [
     attendees_count: 450,
     tickets_sold: 500,
     revenue: 37500,
+    date_end_registration: "2026-01-25",
+    date_with_hours: "09:00 - 18:00",
+    type_ticket: "Standard",
+    price: 75,
   },
   {
     id: "evt_006",
@@ -284,6 +304,10 @@ export const mockEvents: Event[] = [
     attendees_count: 0,
     tickets_sold: 0,
     revenue: 0,
+    date_end_registration: "2026-07-10",
+    date_with_hours: "09:00 - 17:00",
+    type_ticket: "Standard",
+    price: 120,
   },
 ];
 
