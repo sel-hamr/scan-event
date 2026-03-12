@@ -27,6 +27,8 @@ import {
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 const getStatusBadgeVariant = (status: string) => {
   switch (status) {
     case "published":
@@ -46,7 +48,7 @@ const getStatusBadgeVariant = (status: string) => {
 
 export default async function EventsPage() {
   const events = await prisma.event.findMany({
-    orderBy: { dateStart: 'desc' }
+    orderBy: { dateStart: "desc" },
   });
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
