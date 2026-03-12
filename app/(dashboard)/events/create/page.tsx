@@ -1,0 +1,326 @@
+"use client";
+
+import { useState } from "react";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle,
+  CardFooter
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, PlusIcon, TrashIcon } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { mockSpeakers, mockCompanies } from "@/lib/mock-data";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const STEPS = [
+  { id: 1, name: "Event Details", description: "Basic info" },
+  { id: 2, name: "Sessions", description: "Schedule & speakers" },
+  { id: 3, name: "Tickets", description: "Pricing & capacity" },
+];
+
+export default function CreateEventPage() {
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Forms states (placeholder for real form handling)
+  const [sessions, setSessions] = useState<{title: string, speaker: string, start: string, end: string, description: string}[]>([]);
+  const [tickets, setTickets] = useState<{type: string, price: string, capacity: string}[]>([]);
+
+  const handleNext = () => {
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const addSession = () => setSessions([...sessions, { title: "", speaker: "", start: "", end: "", description: "" }]);
+  const removeSession = (index: number) => setSessions(sessions.filter((_, i) => i !== index));
+
+  const addTicket = () => setTickets([...tickets, { type: "", price: "", capacity: "" }]);
+  const removeTicket = (index: number) => setTickets(tickets.filter((_, i) => i !== index));
+
+  return (
+    <div className="flex flex-col gap-6 w-full max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
+      <div className="flex items-center gap-4 mb-4">
+        <Link href="/events">
+          <Button variant="ghost" size="icon" className="rounded-xl">
+            <ArrowLeftIcon className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Create Event</h1>
+          <p className="text-muted-foreground">
+            Set up a new event, manage sessions, and create ticket tiers.
+          </p>
+        </div>
+      </div>
+
+      {/* Stepper */}
+      <div className="relative mb-8">
+        <div className="absolute inset-0 top-1/2 -translate-y-1/2 flex items-center px-10 pointer-events-none">
+          <div className="w-full border-t-2 border-muted"></div>
+        </div>
+        <div className="relative flex justify-between">
+          {STEPS.map((step) => {
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            
+            return (
+              <div key={step.id} className="flex flex-col items-center gap-2 bg-background px-4">
+                <div 
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors border-2",
+                    isActive ? "border-primary bg-primary text-primary-foreground" : 
+                    isCompleted ? "border-primary bg-primary/20 text-primary" : 
+                    "border-muted bg-muted text-muted-foreground"
+                  )}
+                >
+                  {isCompleted ? <CheckCircle2Icon className="h-5 w-5" /> : step.id}
+                </div>
+                <div className="text-center">
+                  <div className={cn("text-sm font-semibold", isActive ? "text-foreground" : "text-muted-foreground")}>
+                    {step.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground hidden sm:block">
+                    {step.description}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      <Card className="rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur">
+        <CardHeader>
+          <CardTitle>{STEPS[currentStep - 1].name}</CardTitle>
+          <CardDescription>{STEPS[currentStep - 1].description}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          
+          {/* Step 1: Event Details */}
+          {currentStep === 1 && (
+            <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Event Title</Label>
+                <Input id="title" placeholder="e.g. Future of Design Conference" className="rounded-xl" />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="date-start">Start Date</Label>
+                  <Input id="date-start" type="date" className="rounded-xl" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="date-end">End Date</Label>
+                  <Input id="date-end" type="date" className="rounded-xl" />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="location">Location or URL</Label>
+                  <Input id="location" placeholder="e.g. San Francisco, CA or Zoom Link" className="rounded-xl" />
+                </div>
+                <div className="grid gap-2 w-full">
+                  <Label htmlFor="company">Company</Label>
+                  <Select>
+                    <SelectTrigger className="rounded-xl w-full" id="company">
+                      <SelectValue placeholder="Select a company" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {mockCompanies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" placeholder="Describe your event..." className="min-h-32 rounded-xl" />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Sessions */}
+          {currentStep === 2 && (
+            <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
+              {sessions.length === 0 ? (
+                <div className="text-center py-10 border-2 border-dashed border-border rounded-2xl">
+                  <p className="text-muted-foreground mb-4">No sessions added yet.</p>
+                  <Button onClick={addSession} variant="outline" className="rounded-xl">
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    Add First Session
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {sessions.map((session, index) => (
+                    <Card key={index} className="overflow-hidden bg-background border-border/50 shadow-none">
+                      <div className="p-4 grid gap-4 relative">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute right-2 top-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeSession(index)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                        <h4 className="font-semibold text-sm">Session {index + 1}</h4>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Session Title</Label>
+                            <Input placeholder="e.g. Keynote Speech" className="rounded-xl" />
+                          </div>
+                          <div className="grid gap-2 w-full">
+                            <Label>Speaker Name</Label>
+                            <Select>
+                              <SelectTrigger className="rounded-xl w-full">
+                                <SelectValue placeholder="Select a speaker" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {mockSpeakers.map((speaker) => (
+                                  <SelectItem key={speaker.id} value={speaker.name}>
+                                    {speaker.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label>Description</Label>
+                          <Textarea placeholder="Brief description of the session..." className="rounded-xl resize-none" />
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label>Start Time</Label>
+                            <Input type="time" className="rounded-xl" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>End Time</Label>
+                            <Input type="time" className="rounded-xl" />
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  <Button onClick={addSession} variant="outline" className="w-full rounded-xl border-dashed">
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    Add Another Session
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Tickets */}
+          {currentStep === 3 && (
+            <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
+               {tickets.length === 0 ? (
+                <div className="text-center py-10 border-2 border-dashed border-border rounded-2xl">
+                  <p className="text-muted-foreground mb-4">No ticket tiers added yet.</p>
+                  <Button onClick={addTicket} variant="outline" className="rounded-xl">
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    Add First Ticket Tier
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {tickets.map((ticket, index) => (
+                    <Card key={index} className="overflow-hidden bg-background border-border/50 shadow-none">
+                      <div className="p-4 grid gap-4 relative">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute right-2 top-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeTicket(index)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                        <h4 className="font-semibold text-sm">Ticket Tier {index + 1}</h4>
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div className="grid gap-2 w-full">
+                            <Label>Ticket Type</Label>
+                            <Select>
+                              <SelectTrigger className="rounded-xl w-full">
+                                <SelectValue placeholder="Select ticket type" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="standard">Standard</SelectItem>
+                                <SelectItem value="vip">VIP</SelectItem>
+                                <SelectItem value="early_bird">Early Bird</SelectItem>
+                                <SelectItem value="free">Free</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Price ($)</Label>
+                            <Input type="number" placeholder="e.g. 99" className="rounded-xl" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label>Capacity</Label>
+                            <Input type="number" placeholder="e.g. 500" className="rounded-xl" />
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  <Button onClick={addTicket} variant="outline" className="w-full rounded-xl border-dashed">
+                    <PlusIcon className="mr-2 h-4 w-4" />
+                    Add Another Ticket Tier
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </CardContent>
+        <CardFooter className="flex justify-between border-t border-border/50 pt-6">
+          <Button 
+            variant="outline" 
+            onClick={handlePrev} 
+            disabled={currentStep === 1}
+            className="rounded-xl"
+          >
+            <ArrowLeftIcon className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          
+          {currentStep < STEPS.length ? (
+            <Button onClick={handleNext} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+              Next
+              <ArrowRightIcon className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Link href="/events">
+              <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+                <CheckCircle2Icon className="mr-2 h-4 w-4" />
+                Publish Event
+              </Button>
+            </Link>
+          )}
+        </CardFooter>
+      </Card>
+    </div>
+  );
+}
