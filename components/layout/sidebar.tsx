@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import React from "react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores";
 import {
@@ -45,6 +46,41 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebarStore();
+  const [userRole, setUserRole] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+
+    const loadRole = async () => {
+      try {
+        const response = await fetch("/api/me", { cache: "no-store" });
+        if (!response.ok) {
+          if (active) setUserRole(null);
+          return;
+        }
+
+        const data = await response.json();
+        if (active) {
+          setUserRole(data?.user?.role ?? null);
+        }
+      } catch {
+        if (active) setUserRole(null);
+      }
+    };
+
+    loadRole();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const visibleNavItems =
+    userRole === "PARTICIPANT"
+      ? navItems.filter((item) =>
+          ["Events", "Networking", "Notifications"].includes(item.label),
+        )
+      : navItems;
 
   return (
     <TooltipProvider delay={0}>
@@ -73,7 +109,7 @@ export function AppSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive =
               pathname === item.href ||
               (item.href !== "/" && pathname.startsWith(item.href));

@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { loginAction } from "./action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,14 +13,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { Shield, CheckCircle2, AlertCircle } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 function LoginContent() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const searchParams = useSearchParams();
-  const registered = searchParams.get("registered") === "true";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,14 +28,30 @@ function LoginContent() {
 
     const formData = new FormData(e.currentTarget);
     try {
-      const result = await loginAction(formData);
-      if (result?.error) {
-        setError(result.error);
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.get("email"),
+          password: formData.get("password"),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result?.error ?? "Something went wrong.");
         setLoading(false);
+        return;
       }
-    } catch (err) {
-      // If it throws NEXT_REDIRECT, we reach here but should not reset loading
-      // as the redirect is happening.
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Something went wrong.");
+      setLoading(false);
     }
   };
 
@@ -59,12 +73,6 @@ function LoginContent() {
           <CardDescription className="text-zinc-400 text-center">
             Welcome back to your event management dashboard
           </CardDescription>
-          {registered && (
-            <div className="mt-4 text-sm font-medium text-emerald-400 bg-emerald-950/50 border border-emerald-900/50 p-3 rounded-lg flex items-center space-x-2 animate-in fade-in slide-in-from-top-1 w-full">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>Registration successful! Please sign in.</span>
-            </div>
-          )}
         </CardHeader>
         <CardContent className="pb-6">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -142,15 +150,6 @@ function LoginContent() {
             >
               Sign up
             </Link>
-          </p>
-          <p className="text-sm text-zinc-500">
-            Forgot password?{" "}
-            <a
-              href="#"
-              className="text-zinc-300 hover:text-white transition-colors"
-            >
-              Contact admin
-            </a>
           </p>
         </CardFooter>
       </Card>

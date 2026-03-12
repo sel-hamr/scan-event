@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useNotificationStore } from "@/stores";
-import { currentUser } from "@/lib/mock-data";
 import { Bell, Search, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +25,13 @@ import {
 } from "@/components/ui/breadcrumb";
 import React from "react";
 
+type HeaderUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
 const routeLabels: Record<string, string> = {
   "": "Dashboard",
   events: "Events",
@@ -45,6 +51,33 @@ export function AppHeader() {
   const { isCollapsed } = useSidebarStore();
   const { unreadCount } = useNotificationStore();
   const [isDark, setIsDark] = React.useState(true);
+  const [currentUser, setCurrentUser] = React.useState<HeaderUser | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+
+    const loadCurrentUser = async () => {
+      try {
+        const response = await fetch("/api/me", { cache: "no-store" });
+        if (!response.ok) {
+          if (active) setCurrentUser(null);
+          return;
+        }
+        const data = await response.json();
+        if (active) {
+          setCurrentUser(data.user ?? null);
+        }
+      } catch {
+        if (active) setCurrentUser(null);
+      }
+    };
+
+    loadCurrentUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const segments = pathname.split("/").filter(Boolean);
 
@@ -67,7 +100,11 @@ export function AppHeader() {
     }
   };
 
-  const initials = currentUser.name
+  const displayName = currentUser?.name ?? "User";
+  const displayEmail = currentUser?.email ?? "";
+  const displayRole = (currentUser?.role ?? "participant").replace("_", " ");
+
+  const initials = displayName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -162,10 +199,10 @@ export function AppHeader() {
               </Avatar>
               <div className="hidden flex-col items-start md:flex">
                 <span className="text-sm font-medium text-foreground">
-                  {currentUser.name}
+                  {displayName}
                 </span>
                 <span className="text-[11px] text-muted-foreground capitalize">
-                  {currentUser.role.replace("_", " ")}
+                  {displayRole}
                 </span>
               </div>
             </Button>
@@ -173,10 +210,8 @@ export function AppHeader() {
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {currentUser.email}
-                </p>
+                <p className="text-sm font-medium">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{displayEmail}</p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

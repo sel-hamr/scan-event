@@ -82,99 +82,79 @@ export default async function EventsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => (
-          <Card
-            key={event.id}
-            className="overflow-hidden rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:shadow-md group"
-          >
-            <div className="h-32 bg-muted relative border-b border-border/50">
-              {/* Placeholder for banner image */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent-purple/20 opacity-50"></div>
+          <Link href={`/events/${event.id}`} className="group">
+            <Card
+              key={event.id}
+              className="overflow-hidden rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:shadow-md group"
+            >
+              <div className="h-32 bg-muted relative border-b border-border/50">
+                {/* Placeholder for banner image */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent-purple/20 opacity-50"></div>
 
-              <div className="absolute top-4 right-4 flex gap-2">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs font-semibold capitalize",
-                    getStatusBadgeVariant(event.status.toLowerCase()),
-                  )}
-                >
-                  {event.status.toLowerCase()}
-                </Badge>
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs font-semibold capitalize",
+                      getStatusBadgeVariant(event.status.toLowerCase()),
+                    )}
+                  >
+                    {event.status.toLowerCase()}
+                  </Badge>
+                </div>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 rounded-full bg-background/50 hover:bg-background/80 backdrop-blur-sm"
-                    >
-                      <MoreHorizontalIcon className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>View Details</DropdownMenuItem>
-                    <DropdownMenuItem>Edit Event</DropdownMenuItem>
-                    <DropdownMenuItem>Manage Tickets</DropdownMenuItem>
-                    <DropdownMenuItem>View Attendees</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive">
-                      Delete Event
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="absolute bottom-4 left-4">
-                <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-background text-foreground shadow-sm min-w-12 h-12 border border-border/50">
-                  <span className="text-[10px] font-bold uppercase text-primary leading-none mb-1">
-                    {format(new Date(event.dateStart), "MMM")}
-                  </span>
-                  <span className="text-sm font-bold leading-none">
-                    {format(new Date(event.dateStart), "dd")}
-                  </span>
+                <div className="absolute bottom-4 left-4">
+                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-background text-foreground shadow-sm min-w-12 h-12 border border-border/50">
+                    <span className="text-[10px] font-bold uppercase text-primary leading-none mb-1">
+                      {format(new Date(event.dateStart), "MMM")}
+                    </span>
+                    <span className="text-sm font-bold leading-none">
+                      {format(new Date(event.dateStart), "dd")}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <CardHeader className="pt-4 pb-2">
-              <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors cursor-pointer">
-                {event.title}
-              </CardTitle>
-              <CardDescription className="line-clamp-2 min-h-10">
-                {event.description}
-              </CardDescription>
-            </CardHeader>
+              <CardHeader className="pt-4 pb-2">
+                <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors cursor-pointer">
+                  {event.title}
+                </CardTitle>
+                <CardDescription className="line-clamp-2 min-h-10">
+                  {event.description}
+                </CardDescription>
+              </CardHeader>
 
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 truncate text-ellipsis overflow-hidden">
-                <span className="font-medium">{event.location}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border/50">
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">
-                    Tickets Sold
-                  </span>
-                  <span className="text-sm font-bold">
-                    {event.ticketsSold}
-                    {event.attendeesCount > 0 ? (
-                      <span className="text-muted-foreground font-normal text-xs ml-1">
-                        / {event.attendeesCount}
-                      </span>
-                    ) : null}
-                  </span>
+              <CardContent>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 truncate text-ellipsis overflow-hidden">
+                  <span className="font-medium">{event.location}</span>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-xs text-muted-foreground">Revenue</span>
-                  <span className="text-sm font-bold">
-                    ${(event.revenue / 1000).toFixed(1)}k
-                  </span>
+
+                <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border/50">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">
+                      Tickets Sold
+                    </span>
+                    <span className="text-sm font-bold">
+                      {event.ticketsSold}
+                      {event.attendeesCount > 0 ? (
+                        <span className="text-muted-foreground font-normal text-xs ml-1">
+                          / {event.attendeesCount}
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">
+                      Revenue
+                    </span>
+                    <span className="text-sm font-bold">
+                      ${(event.revenue / 1000).toFixed(1)}k
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

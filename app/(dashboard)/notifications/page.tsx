@@ -16,7 +16,7 @@ import {
   NotificationActions,
   MarkAllReadButton,
 } from "@/components/notification-actions";
-import { auth } from "@/auth";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +51,8 @@ const getTypeBg = (type: string) => {
 };
 
 export default async function NotificationsPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
 
   if (!userId) {
     return (
