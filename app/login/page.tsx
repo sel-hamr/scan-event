@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Shield } from "lucide-react"
+import Link from "next/link"
+import { Shield, CheckCircle2, AlertCircle } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const registered = searchParams.get("registered") === "true"
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -46,6 +50,12 @@ export default function LoginPage() {
           <CardDescription className="text-zinc-400 text-center">
             Welcome back to your event management dashboard
           </CardDescription>
+          {registered && (
+            <div className="mt-4 text-sm font-medium text-emerald-400 bg-emerald-950/50 border border-emerald-900/50 p-3 rounded-lg flex items-center space-x-2 animate-in fade-in slide-in-from-top-1 w-full">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Registration successful! Please sign in.</span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="pb-6">
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -93,7 +103,10 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center border-t border-zinc-900/50 pt-6 pb-8">
+        <CardFooter className="flex flex-col space-y-4 border-t border-zinc-900/50 pt-6 pb-8">
+          <p className="text-sm text-zinc-500">
+            Don't have an account? <Link href="/register" className="text-zinc-300 hover:text-white transition-colors">Sign up</Link>
+          </p>
           <p className="text-sm text-zinc-500">
             Forgot password? <a href="#" className="text-zinc-300 hover:text-white transition-colors">Contact admin</a>
           </p>

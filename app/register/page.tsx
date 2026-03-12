@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { UserPlus } from "lucide-react"
+import { UserPlus, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function RegisterPage() {
@@ -101,7 +101,7 @@ export default function RegisterPage() {
             
             {error && (
               <div className="text-sm font-medium text-red-400 bg-red-950/50 border border-red-900/50 p-3 rounded-lg flex items-center space-x-2 animate-in fade-in slide-in-from-top-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-alert-circle shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12 y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
