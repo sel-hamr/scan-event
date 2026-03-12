@@ -105,7 +105,6 @@ export async function POST(req: Request) {
         for (let i = 0; i < capacity; i++) {
           ticketRecords.push({
             eventId: event.id,
-            userId: user.id, // satisfying db constraint
             type: ticketType as any,
             price: price,
             status: "ACTIVE",
