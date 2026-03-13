@@ -15,7 +15,8 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname === "/login" && userId) {
-    return NextResponse.redirect(new URL("/", request.url));
+    const redirectPath = userRole === "SUPER_ADMIN" ? "/" : "/events";
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   if (userId && userRole === "PARTICIPANT" && pathname === "/tickets") {

@@ -57,7 +57,7 @@ function LoginContent() {
         return;
       }
 
-      const redirectTo = result?.user?.role === "PARTICIPANT" ? "/events" : "/";
+      const redirectTo = result?.user?.role === "SUPER_ADMIN" ? "/" : "/events";
       window.location.href = redirectTo;
     } catch {
       setError("Something went wrong.");

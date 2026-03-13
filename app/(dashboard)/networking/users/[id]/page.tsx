@@ -248,7 +248,11 @@ export default async function NetworkingUserDetailsPage({
   ];
 
   return (
-    <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500 pb-16">
+    <div className="flex flex-col gap-8 w-full animate-in fade-in duration-700 pb-16 relative">
+      {/* Dynamic Background Blobs */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-primary/10 via-secondary/10 to-transparent -z-10 rounded-full blur-[100px]" />
+      <div className="absolute bottom-[20%] left-0 w-[400px] h-[400px] bg-gradient-to-tr from-accent/10 to-transparent -z-10 rounded-full blur-[100px]" />
+      
       {/* Back button + admin actions */}
       <div className="flex items-center justify-between">
         <Link href="/networking/users">
@@ -279,9 +283,9 @@ export default async function NetworkingUserDetailsPage({
       </div>
 
       {/* ===== HERO PROFILE BANNER ===== */}
-      <div className="relative rounded-3xl overflow-hidden border border-border/40 shadow-2xl">
-        {/* Background gradient */}
-        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-20", gradient)} />
+      <div className="relative rounded-3xl overflow-hidden border border-border/40 shadow-2xl group transition-all duration-700 hover:shadow-primary/10">
+        {/* Animated background gradient */}
+        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-20 group-hover:opacity-30 transition-opacity duration-1000", gradient)} />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.05)_0%,_transparent_60%)]" />
 
         {/* Gradient stripe top */}
@@ -391,9 +395,14 @@ export default async function NetworkingUserDetailsPage({
             color: "text-amber-400",
             bg: "bg-amber-500/10",
           },
-        ].map((kpi) => (
-          <Card key={kpi.label} className="rounded-2xl border-border/50 bg-card/60 shadow-sm overflow-hidden">
-            <CardContent className="p-5">
+        ].map((kpi, i) => (
+          <Card
+            key={kpi.label}
+            className="rounded-2xl border-border/50 bg-card/40 backdrop-blur-xl shadow-sm overflow-hidden relative group transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20 hover:bg-card/60 animate-in fade-in slide-in-from-bottom-4 fill-mode-both"
+            style={{ animationDelay: `${100 + i * 100}ms` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <CardContent className="p-5 relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm text-muted-foreground font-medium">{kpi.label}</p>
                 <div className={cn("p-2 rounded-xl", kpi.bg, kpi.color)}>
@@ -409,8 +418,8 @@ export default async function NetworkingUserDetailsPage({
       {/* ===== MAIN CONTENT GRID ===== */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile details sidebar */}
-        <div className="flex flex-col gap-6">
-          <Card className="rounded-2xl border-border/50 bg-card/60 shadow-sm">
+        <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-both">
+          <Card className="rounded-2xl border-border/50 bg-card/40 backdrop-blur-md shadow-sm transition-all hover:shadow-md">
             <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
@@ -451,7 +460,7 @@ export default async function NetworkingUserDetailsPage({
           </Card>
 
           {/* Activity summary card */}
-          <Card className="rounded-2xl border-border/50 bg-card/60 shadow-sm">
+          <Card className="rounded-2xl border-border/50 bg-card/40 backdrop-blur-md shadow-sm transition-all hover:shadow-md">
             <CardHeader className="pb-4">
               <CardTitle className="text-base flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" />
@@ -482,7 +491,7 @@ export default async function NetworkingUserDetailsPage({
         </div>
 
         {/* Ticket History */}
-        <Card className="rounded-2xl border-border/50 bg-card/60 shadow-sm lg:col-span-2">
+        <Card className="rounded-2xl border-border/50 bg-card/40 backdrop-blur-md shadow-sm lg:col-span-2 animate-in slide-in-from-bottom-4 duration-700 delay-300 fill-mode-both">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
@@ -513,10 +522,11 @@ export default async function NetworkingUserDetailsPage({
                   return (
                     <div
                       key={ticket.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 hover:bg-muted/10 transition-colors group"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-5 hover:bg-card/80 backdrop-blur-sm transition-all duration-300 group border-b border-transparent hover:border-border/50 relative overflow-hidden"
                     >
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                       {/* Left: event info */}
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
+                      <div className="flex items-start gap-4 min-w-0 flex-1 relative z-10">
                         <div className="p-2 rounded-xl bg-muted/30 text-muted-foreground shrink-0">
                           <TicketIcon className="h-4 w-4" />
                         </div>
@@ -541,7 +551,7 @@ export default async function NetworkingUserDetailsPage({
                       </div>
 
                       {/* Right: badges + price + QR */}
-                      <div className="flex items-center gap-3 flex-wrap shrink-0">
+                      <div className="flex items-center gap-3 flex-wrap shrink-0 relative z-10">
                         <Badge
                           variant="outline"
                           className={cn(

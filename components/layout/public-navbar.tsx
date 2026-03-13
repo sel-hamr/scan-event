@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Moon, Shield, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function PublicNavbar() {
   const [isDark, setIsDark] = useState(() => {
@@ -74,12 +75,18 @@ export function PublicNavbar() {
               <Moon className="h-4 w-4" />
             )}
           </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/login">Sign in</Link>
-          </Button>
-          <Button asChild size="sm" className="shadow-sm">
-            <Link href="/register">Create account</Link>
-          </Button>
+          <Link
+            href="/login"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/register"
+            className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
+          >
+            Create account
+          </Link>
         </div>
       </div>
     </header>
