@@ -1,0 +1,67 @@
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const currentPassword =
+    typeof body?.currentPassword === "string" ? body.currentPassword : "";
+  const newPassword =
+    typeof body?.newPassword === "string" ? body.newPassword : "";
+
+  if (!currentPassword || !newPassword) {
+    return NextResponse.json(
+      { error: "Current password and new password are required." },
+      { status: 400 },
+    );
+  }
+
+  if (newPassword.length < 8) {
+    return NextResponse.json(
+      { error: "New password must be at least 8 characters." },
+      { status: 400 },
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      password: true,
+    },
+  });
+
+  if (!user?.password) {
+    return NextResponse.json(
+      { error: "Password change is not available for this account." },
+      { status: 400 },
+    );
+  }
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) {
+    return NextResponse.json(
+      { error: "Current password is incorrect." },
+      { status: 400 },
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+    },
+  });
+
+  return NextResponse.json({ success: true });
+}

@@ -52,6 +52,7 @@ export function AppHeader() {
   const { unreadCount } = useNotificationStore();
   const [isDark, setIsDark] = React.useState(true);
   const [currentUser, setCurrentUser] = React.useState<HeaderUser | null>(null);
+  const [loggingOut, setLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -100,6 +101,17 @@ export function AppHeader() {
     }
   };
 
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  };
+
   const displayName = currentUser?.name ?? "User";
   const displayEmail = currentUser?.email ?? "";
   const displayRole = (currentUser?.role ?? "participant").replace("_", " ");
@@ -114,7 +126,7 @@ export function AppHeader() {
     <header
       className={cn(
         "sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 px-6 backdrop-blur-md transition-all duration-300",
-        isCollapsed ? "ml-[68px]" : "ml-[260px]",
+        isCollapsed ? "ml-17" : "ml-65",
       )}
     >
       {/* Breadcrumbs */}
@@ -152,7 +164,7 @@ export function AppHeader() {
           size="icon"
           className="rounded-xl text-muted-foreground hover:text-foreground"
         >
-          <Search className="h-[18px] w-[18px]" />
+          <Search className="h-4.5 w-4.5" />
         </Button>
 
         {/* Theme toggle */}
@@ -163,9 +175,9 @@ export function AppHeader() {
           onClick={handleThemeToggle}
         >
           {isDark ? (
-            <Sun className="h-[18px] w-[18px]" />
+            <Sun className="h-4.5 w-4.5" />
           ) : (
-            <Moon className="h-[18px] w-[18px]" />
+            <Moon className="h-4.5 w-4.5" />
           )}
         </Button>
 
@@ -176,7 +188,7 @@ export function AppHeader() {
             size="icon"
             className="relative rounded-xl text-muted-foreground hover:text-foreground"
           >
-            <Bell className="h-[18px] w-[18px]" />
+            <Bell className="h-4.5 w-4.5" />
             {unreadCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                 {unreadCount}
@@ -219,8 +231,12 @@ export function AppHeader() {
               <Link href="/settings">Profile & Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
-              Log out
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={handleLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

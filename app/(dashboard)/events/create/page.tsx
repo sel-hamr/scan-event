@@ -1,23 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
+import { useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
   CardTitle,
-  CardFooter
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeftIcon, ArrowRightIcon, CheckCircle2Icon, PlusIcon, TrashIcon, Loader2Icon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckCircle2Icon,
+  PlusIcon,
+  TrashIcon,
+  Loader2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { mockSpeakers, mockCompanies } from "@/lib/mock-data";
 import {
   Select,
   SelectContent,
@@ -44,11 +51,39 @@ export default function CreateEventPage() {
     dateEnd: "",
     location: "",
     companyId: "",
-    description: ""
+    description: "",
   });
 
-  const [sessions, setSessions] = useState<{title: string, speaker: string, start: string, end: string, description: string}[]>([]);
-  const [tickets, setTickets] = useState<{type: string, price: string, capacity: string}[]>([]);
+  const [sessions, setSessions] = useState<
+    {
+      title: string;
+      speaker: string;
+      start: string;
+      end: string;
+      description: string;
+    }[]
+  >([]);
+  const [tickets, setTickets] = useState<
+    { type: string; price: string; capacity: string }[]
+  >([]);
+  const [companies, setCompanies] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [speakers, setSpeakers] = useState<Array<{ id: string; name: string }>>(
+    [],
+  );
+
+  useEffect(() => {
+    const loadOptions = async () => {
+      const response = await fetch("/api/options", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json();
+      setCompanies(payload.companies || []);
+      setSpeakers(payload.speakers || []);
+    };
+
+    loadOptions();
+  }, []);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
@@ -62,16 +97,23 @@ export default function CreateEventPage() {
     }
   };
 
-  const addSession = () => setSessions([...sessions, { title: "", speaker: "", start: "", end: "", description: "" }]);
-  const removeSession = (index: number) => setSessions(sessions.filter((_, i) => i !== index));
+  const addSession = () =>
+    setSessions([
+      ...sessions,
+      { title: "", speaker: "", start: "", end: "", description: "" },
+    ]);
+  const removeSession = (index: number) =>
+    setSessions(sessions.filter((_, i) => i !== index));
   const updateSession = (index: number, field: string, value: string) => {
     const newSessions = [...sessions];
     newSessions[index] = { ...newSessions[index], [field]: value };
     setSessions(newSessions);
   };
 
-  const addTicket = () => setTickets([...tickets, { type: "", price: "", capacity: "" }]);
-  const removeTicket = (index: number) => setTickets(tickets.filter((_, i) => i !== index));
+  const addTicket = () =>
+    setTickets([...tickets, { type: "", price: "", capacity: "" }]);
+  const removeTicket = (index: number) =>
+    setTickets(tickets.filter((_, i) => i !== index));
   const updateTicket = (index: number, field: string, value: string) => {
     const newTickets = [...tickets];
     newTickets[index] = { ...newTickets[index], [field]: value };
@@ -89,7 +131,7 @@ export default function CreateEventPage() {
         body: JSON.stringify({
           ...eventDetails,
           sessions,
-          tickets
+          tickets,
         }),
       });
 
@@ -132,21 +174,35 @@ export default function CreateEventPage() {
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
             const isCompleted = currentStep > step.id;
-            
+
             return (
-              <div key={step.id} className="flex flex-col items-center gap-2 bg-background px-4">
-                <div 
+              <div
+                key={step.id}
+                className="flex flex-col items-center gap-2 bg-background px-4"
+              >
+                <div
                   className={cn(
                     "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors border-2",
-                    isActive ? "border-primary bg-primary text-primary-foreground" : 
-                    isCompleted ? "border-primary bg-primary/20 text-primary" : 
-                    "border-muted bg-muted text-muted-foreground"
+                    isActive
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : isCompleted
+                        ? "border-primary bg-primary/20 text-primary"
+                        : "border-muted bg-muted text-muted-foreground",
                   )}
                 >
-                  {isCompleted ? <CheckCircle2Icon className="h-5 w-5" /> : step.id}
+                  {isCompleted ? (
+                    <CheckCircle2Icon className="h-5 w-5" />
+                  ) : (
+                    step.id
+                  )}
                 </div>
                 <div className="text-center">
-                  <div className={cn("text-sm font-semibold", isActive ? "text-foreground" : "text-muted-foreground")}>
+                  <div
+                    className={cn(
+                      "text-sm font-semibold",
+                      isActive ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
                     {step.name}
                   </div>
                   <div className="text-xs text-muted-foreground hidden sm:block">
@@ -163,67 +219,87 @@ export default function CreateEventPage() {
       <Card className="rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur">
         <CardHeader>
           <CardTitle>{STEPS[currentStep - 1].name}</CardTitle>
-          <CardDescription>{STEPS[currentStep - 1].description}</CardDescription>
+          <CardDescription>
+            {STEPS[currentStep - 1].description}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          
           {/* Step 1: Event Details */}
           {currentStep === 1 && (
             <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
               <div className="grid gap-2">
                 <Label htmlFor="title">Event Title</Label>
-                <Input 
-                  id="title" 
-                  placeholder="e.g. Future of Design Conference" 
-                  className="rounded-xl" 
+                <Input
+                  id="title"
+                  placeholder="e.g. Future of Design Conference"
+                  className="rounded-xl"
                   value={eventDetails.title}
-                  onChange={(e) => setEventDetails({...eventDetails, title: e.target.value})}
+                  onChange={(e) =>
+                    setEventDetails({ ...eventDetails, title: e.target.value })
+                  }
                 />
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="date-start">Start Date</Label>
-                  <Input 
-                    id="date-start" 
-                    type="date" 
-                    className="rounded-xl" 
+                  <Input
+                    id="date-start"
+                    type="date"
+                    className="rounded-xl"
                     value={eventDetails.dateStart}
-                    onChange={(e) => setEventDetails({...eventDetails, dateStart: e.target.value})}
+                    onChange={(e) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        dateStart: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="date-end">End Date</Label>
-                  <Input 
-                    id="date-end" 
-                    type="date" 
-                    className="rounded-xl" 
+                  <Input
+                    id="date-end"
+                    type="date"
+                    className="rounded-xl"
                     value={eventDetails.dateEnd}
-                    onChange={(e) => setEventDetails({...eventDetails, dateEnd: e.target.value})}
+                    onChange={(e) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        dateEnd: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="location">Location or URL</Label>
-                  <Input 
-                    id="location" 
-                    placeholder="e.g. San Francisco, CA or Zoom Link" 
-                    className="rounded-xl" 
+                  <Input
+                    id="location"
+                    placeholder="e.g. San Francisco, CA or Zoom Link"
+                    className="rounded-xl"
                     value={eventDetails.location}
-                    onChange={(e) => setEventDetails({...eventDetails, location: e.target.value})}
+                    onChange={(e) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        location: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="grid gap-2 w-full">
                   <Label htmlFor="company">Company</Label>
-                  <Select 
+                  <Select
                     value={eventDetails.companyId}
-                    onValueChange={(val: string | null) => setEventDetails({...eventDetails, companyId: val || ""})}
+                    onValueChange={(val: string | null) =>
+                      setEventDetails({ ...eventDetails, companyId: val || "" })
+                    }
                   >
                     <SelectTrigger className="rounded-xl w-full" id="company">
                       <SelectValue placeholder="Select a company" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      {mockCompanies.map((company) => (
+                      {companies.map((company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name}
                         </SelectItem>
@@ -234,12 +310,17 @@ export default function CreateEventPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Describe your event..." 
-                  className="min-h-32 rounded-xl" 
+                <Textarea
+                  id="description"
+                  placeholder="Describe your event..."
+                  className="min-h-32 rounded-xl"
                   value={eventDetails.description}
-                  onChange={(e) => setEventDetails({...eventDetails, description: e.target.value})}
+                  onChange={(e) =>
+                    setEventDetails({
+                      ...eventDetails,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -250,8 +331,14 @@ export default function CreateEventPage() {
             <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
               {sessions.length === 0 ? (
                 <div className="text-center py-10 border-2 border-dashed border-border rounded-2xl">
-                  <p className="text-muted-foreground mb-4">No sessions added yet.</p>
-                  <Button onClick={addSession} variant="outline" className="rounded-xl">
+                  <p className="text-muted-foreground mb-4">
+                    No sessions added yet.
+                  </p>
+                  <Button
+                    onClick={addSession}
+                    variant="outline"
+                    className="rounded-xl"
+                  >
                     <PlusIcon className="mr-2 h-4 w-4" />
                     Add First Session
                   </Button>
@@ -259,39 +346,51 @@ export default function CreateEventPage() {
               ) : (
                 <div className="space-y-6">
                   {sessions.map((session, index) => (
-                    <Card key={index} className="overflow-hidden bg-background border-border/50 shadow-none">
+                    <Card
+                      key={index}
+                      className="overflow-hidden bg-background border-border/50 shadow-none"
+                    >
                       <div className="p-4 grid gap-4 relative">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="absolute right-2 top-2 text-muted-foreground hover:text-destructive"
                           onClick={() => removeSession(index)}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>
-                        <h4 className="font-semibold text-sm">Session {index + 1}</h4>
+                        <h4 className="font-semibold text-sm">
+                          Session {index + 1}
+                        </h4>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
                             <Label>Session Title</Label>
-                            <Input 
-                              placeholder="e.g. Keynote Speech" 
-                              className="rounded-xl" 
+                            <Input
+                              placeholder="e.g. Keynote Speech"
+                              className="rounded-xl"
                               value={session.title}
-                              onChange={(e) => updateSession(index, "title", e.target.value)}
+                              onChange={(e) =>
+                                updateSession(index, "title", e.target.value)
+                              }
                             />
                           </div>
                           <div className="grid gap-2 w-full">
                             <Label>Speaker Name</Label>
-                            <Select 
+                            <Select
                               value={session.speaker}
-                              onValueChange={(val: string | null) => updateSession(index, "speaker", val || "")}
+                              onValueChange={(val: string | null) =>
+                                updateSession(index, "speaker", val || "")
+                              }
                             >
                               <SelectTrigger className="rounded-xl w-full">
                                 <SelectValue placeholder="Select a speaker" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
-                                {mockSpeakers.map((speaker) => (
-                                  <SelectItem key={speaker.id} value={speaker.id}>
+                                {speakers.map((speaker) => (
+                                  <SelectItem
+                                    key={speaker.id}
+                                    value={speaker.id}
+                                  >
                                     {speaker.name}
                                   </SelectItem>
                                 ))}
@@ -301,37 +400,51 @@ export default function CreateEventPage() {
                         </div>
                         <div className="grid gap-2">
                           <Label>Description</Label>
-                          <Textarea 
-                            placeholder="Brief description of the session..." 
-                            className="rounded-xl resize-none" 
+                          <Textarea
+                            placeholder="Brief description of the session..."
+                            className="rounded-xl resize-none"
                             value={session.description}
-                            onChange={(e) => updateSession(index, "description", e.target.value)}
+                            onChange={(e) =>
+                              updateSession(
+                                index,
+                                "description",
+                                e.target.value,
+                              )
+                            }
                           />
                         </div>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
                             <Label>Start Time</Label>
-                            <Input 
-                              type="time" 
-                              className="rounded-xl" 
+                            <Input
+                              type="time"
+                              className="rounded-xl"
                               value={session.start}
-                              onChange={(e) => updateSession(index, "start", e.target.value)}
+                              onChange={(e) =>
+                                updateSession(index, "start", e.target.value)
+                              }
                             />
                           </div>
                           <div className="grid gap-2">
                             <Label>End Time</Label>
-                            <Input 
-                              type="time" 
-                              className="rounded-xl" 
+                            <Input
+                              type="time"
+                              className="rounded-xl"
                               value={session.end}
-                              onChange={(e) => updateSession(index, "end", e.target.value)}
+                              onChange={(e) =>
+                                updateSession(index, "end", e.target.value)
+                              }
                             />
                           </div>
                         </div>
                       </div>
                     </Card>
                   ))}
-                  <Button onClick={addSession} variant="outline" className="w-full rounded-xl border-dashed">
+                  <Button
+                    onClick={addSession}
+                    variant="outline"
+                    className="w-full rounded-xl border-dashed"
+                  >
                     <PlusIcon className="mr-2 h-4 w-4" />
                     Add Another Session
                   </Button>
@@ -343,10 +456,16 @@ export default function CreateEventPage() {
           {/* Step 3: Tickets */}
           {currentStep === 3 && (
             <div className="grid gap-6 animate-in slide-in-from-right-4 duration-300">
-               {tickets.length === 0 ? (
+              {tickets.length === 0 ? (
                 <div className="text-center py-10 border-2 border-dashed border-border rounded-2xl">
-                  <p className="text-muted-foreground mb-4">No ticket tiers added yet.</p>
-                  <Button onClick={addTicket} variant="outline" className="rounded-xl">
+                  <p className="text-muted-foreground mb-4">
+                    No ticket tiers added yet.
+                  </p>
+                  <Button
+                    onClick={addTicket}
+                    variant="outline"
+                    className="rounded-xl"
+                  >
                     <PlusIcon className="mr-2 h-4 w-4" />
                     Add First Ticket Tier
                   </Button>
@@ -354,60 +473,79 @@ export default function CreateEventPage() {
               ) : (
                 <div className="space-y-6">
                   {tickets.map((ticket, index) => (
-                    <Card key={index} className="overflow-hidden bg-background border-border/50 shadow-none">
+                    <Card
+                      key={index}
+                      className="overflow-hidden bg-background border-border/50 shadow-none"
+                    >
                       <div className="p-4 grid gap-4 relative">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="absolute right-2 top-2 text-muted-foreground hover:text-destructive"
                           onClick={() => removeTicket(index)}
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>
-                        <h4 className="font-semibold text-sm">Ticket Tier {index + 1}</h4>
+                        <h4 className="font-semibold text-sm">
+                          Ticket Tier {index + 1}
+                        </h4>
                         <div className="grid md:grid-cols-3 gap-4">
                           <div className="grid gap-2 w-full">
                             <Label>Ticket Type</Label>
-                            <Select 
+                            <Select
                               value={ticket.type}
-                              onValueChange={(val: string | null) => updateTicket(index, "type", val || "")}
+                              onValueChange={(val: string | null) =>
+                                updateTicket(index, "type", val || "")
+                              }
                             >
                               <SelectTrigger className="rounded-xl w-full">
                                 <SelectValue placeholder="Select ticket type" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
-                                <SelectItem value="standard">Standard</SelectItem>
+                                <SelectItem value="standard">
+                                  Standard
+                                </SelectItem>
                                 <SelectItem value="vip">VIP</SelectItem>
-                                <SelectItem value="early_bird">Early Bird</SelectItem>
+                                <SelectItem value="early_bird">
+                                  Early Bird
+                                </SelectItem>
                                 <SelectItem value="free">Free</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="grid gap-2">
                             <Label>Price ($)</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="e.g. 99" 
-                              className="rounded-xl" 
+                            <Input
+                              type="number"
+                              placeholder="e.g. 99"
+                              className="rounded-xl"
                               value={ticket.price}
-                              onChange={(e) => updateTicket(index, "price", e.target.value)}
+                              onChange={(e) =>
+                                updateTicket(index, "price", e.target.value)
+                              }
                             />
                           </div>
                           <div className="grid gap-2">
                             <Label>Capacity</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="e.g. 500" 
-                              className="rounded-xl" 
+                            <Input
+                              type="number"
+                              placeholder="e.g. 500"
+                              className="rounded-xl"
                               value={ticket.capacity}
-                              onChange={(e) => updateTicket(index, "capacity", e.target.value)}
+                              onChange={(e) =>
+                                updateTicket(index, "capacity", e.target.value)
+                              }
                             />
                           </div>
                         </div>
                       </div>
                     </Card>
                   ))}
-                  <Button onClick={addTicket} variant="outline" className="w-full rounded-xl border-dashed">
+                  <Button
+                    onClick={addTicket}
+                    variant="outline"
+                    className="w-full rounded-xl border-dashed"
+                  >
                     <PlusIcon className="mr-2 h-4 w-4" />
                     Add Another Ticket Tier
                   </Button>
@@ -415,27 +553,29 @@ export default function CreateEventPage() {
               )}
             </div>
           )}
-
         </CardContent>
         <CardFooter className="flex justify-between border-t border-border/50 pt-6">
-          <Button 
-            variant="outline" 
-            onClick={handlePrev} 
+          <Button
+            variant="outline"
+            onClick={handlePrev}
             disabled={currentStep === 1 || isLoading}
             className="rounded-xl"
           >
             <ArrowLeftIcon className="mr-2 h-4 w-4" />
             Back
           </Button>
-          
+
           {currentStep < STEPS.length ? (
-            <Button onClick={handleNext} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button
+              onClick={handleNext}
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            >
               Next
               <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button 
-              onClick={handlePublish} 
+            <Button
+              onClick={handlePublish}
               disabled={isLoading}
               className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 min-w-32"
             >

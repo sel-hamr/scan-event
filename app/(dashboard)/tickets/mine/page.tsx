@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { QrCodeIcon, TicketIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import {
   Card,
   CardContent,
@@ -9,10 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SearchIcon, QrCodeIcon, ArrowRightIcon } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -21,15 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const dynamic = "force-dynamic";
-
-type TicketsPageProps = {
-  searchParams?: Promise<{
-    q?: string;
-  }>;
-};
 
 const getTicketTypeVariant = (type: string) => {
   switch (type.toLowerCase()) {
@@ -61,51 +54,38 @@ const getStatusVariant = (status: string) => {
   }
 };
 
-export default async function TicketsPage({ searchParams }: TicketsPageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const query =
-    typeof resolvedSearchParams?.q === "string"
-      ? resolvedSearchParams.q.trim()
-      : "";
+export default async function MyTicketsPage() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("userId")?.value;
+  const userRole = cookieStore.get("userRole")?.value;
+
+  if (!userId) {
+    redirect("/login");
+  }
+
+  if (userRole !== "PARTICIPANT") {
+    redirect("/tickets");
+  }
 
   const tickets = await prisma.ticket.findMany({
-    where: query
-      ? {
-          OR: [
-            { id: { contains: query, mode: "insensitive" } },
-            {
-              user: { is: { name: { contains: query, mode: "insensitive" } } },
-            },
-            {
-              user: { is: { email: { contains: query, mode: "insensitive" } } },
-            },
-            {
-              event: {
-                is: { title: { contains: query, mode: "insensitive" } },
-              },
-            },
-          ],
-        }
-      : undefined,
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          avatar: true,
-        },
+    where: {
+      userId,
+      status: {
+        in: ["ACTIVE", "USED", "CANCELLED", "EXPIRED"],
       },
+    },
+    include: {
       event: {
         select: {
           id: true,
           title: true,
+          dateStart: true,
+          location: true,
         },
       },
       qrCodes: {
         select: {
           id: true,
-          scanned: true,
         },
       },
     },
@@ -118,45 +98,21 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
 
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tickets</h1>
-          <p className="text-muted-foreground">
-            Manage issued tickets, sales, and QR codes.
-          </p>
-        </div>
-        <form
-          action="/tickets"
-          className="flex items-center gap-3 w-full sm:w-auto"
-        >
-          <div className="relative w-full sm:w-72">
-            <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              name="q"
-              defaultValue={query}
-              placeholder="Search attendee, event, or ticket ID..."
-              className="w-full bg-background pl-9 rounded-xl"
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            className="shrink-0 rounded-xl"
-          >
-            Search
-          </Button>
-        </form>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Tickets</h1>
+        <p className="text-muted-foreground">
+          All tickets you bought for your events.
+        </p>
       </div>
 
       <Card className="rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur">
         <CardHeader className="py-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg">Recent Tickets</CardTitle>
+              <CardTitle className="text-lg">Your Tickets</CardTitle>
               <CardDescription>
-                {tickets.length} ticket{tickets.length === 1 ? "" : "s"}
-                {query ? ` matching \"${query}\"` : " across all events"}
+                {tickets.length} ticket{tickets.length === 1 ? "" : "s"} in your
+                account
               </CardDescription>
             </div>
           </div>
@@ -164,15 +120,15 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
         <CardContent className="px-0 pb-0">
           {tickets.length === 0 ? (
             <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-              No tickets found.
+              No tickets found in your account yet.
             </div>
           ) : (
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-20 text-center">QR</TableHead>
-                  <TableHead className="min-w-50">Attendee</TableHead>
                   <TableHead className="min-w-50">Event</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
@@ -183,7 +139,7 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                 {tickets.map((ticket) => (
                   <TableRow key={ticket.id} className="hover:bg-muted/50">
                     <TableCell className="text-center">
-                      <Link href={`/tickets/${ticket.id}`}>
+                      <Link href={`/tickets/mine/${ticket.id}`}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -194,43 +150,23 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={ticket.user?.avatar || undefined} />
-                          <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
-                            {(ticket.user?.name || "UA")
-                              .split(" ")
-                              .map((part) => part[0])
-                              .join("")
-                              .slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="space-y-1">
-                          {ticket.user ? (
-                            <Link
-                              href={`/networking/users/${ticket.user.id}`}
-                              className="text-sm font-medium leading-none transition-colors hover:text-primary"
-                            >
-                              {ticket.user.name}
-                            </Link>
-                          ) : (
-                            <p className="text-sm font-medium leading-none">
-                              Unassigned
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            {ticket.user?.email || "No user assigned"}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {ticket.id}
-                          </p>
-                        </div>
+                      <div className="space-y-1">
+                        <Link
+                          href={`/events/${ticket.event.id}`}
+                          className="text-sm font-medium leading-none transition-colors hover:text-primary"
+                        >
+                          {ticket.event.title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {ticket.event.location}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {ticket.id}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm font-medium">
-                        {ticket.event.title}
-                      </span>
+                      {formatDateTime(ticket.event.dateStart)}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -244,11 +180,9 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm font-medium">
-                        {ticket.price === 0
-                          ? "Free"
-                          : formatCurrency(ticket.price)}
-                      </span>
+                      {ticket.price === 0
+                        ? "Free"
+                        : formatCurrency(ticket.price)}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -262,14 +196,13 @@ export default async function TicketsPage({ searchParams }: TicketsPageProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/tickets/${ticket.id}`}>
+                      <Link href={`/tickets/mine/${ticket.id}`}>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="rounded-lg text-muted-foreground hover:text-foreground"
+                          className="rounded-lg"
                         >
                           View
-                          <ArrowRightIcon className="ml-2 h-4 w-4" />
                         </Button>
                       </Link>
                     </TableCell>

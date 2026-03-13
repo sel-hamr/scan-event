@@ -134,6 +134,28 @@ export default async function EventDetailsPage({
     0,
   );
 
+  const availableTicketOptions = Object.entries(ticketSummary)
+    .map(([type, summary]) => ({
+      type,
+      label: type.replaceAll("_", " "),
+      price:
+        event.tickets.find(
+          (ticket) => ticket.type === type && ticket.userId === null,
+        )?.price ?? 0,
+      available: summary.count - summary.sold,
+    }))
+    .filter((option) => option.available > 0)
+    .sort((left, right) => left.price - right.price);
+
+  const currentUserId = cookieStore.get("userId")?.value;
+  const hasPurchasedTicket = !!currentUserId
+    ? event.tickets.some(
+        (ticket) =>
+          ticket.userId === currentUserId &&
+          ["ACTIVE", "USED"].includes(ticket.status),
+      )
+    : false;
+
   const registrationConfirmed = event.registrations.filter(
     (registration) => registration.status === "CONFIRMED",
   ).length;
@@ -197,7 +219,11 @@ export default async function EventDetailsPage({
             </p>
           </div>
           {currentRole === "PARTICIPANT" ? (
-            <BuyTicketButton eventId={event.id} />
+            <BuyTicketButton
+              eventId={event.id}
+              ticketOptions={availableTicketOptions}
+              hasPurchased={hasPurchasedTicket}
+            />
           ) : (
             <Link href="/events/create">
               <Button className="rounded-xl">Create Event</Button>

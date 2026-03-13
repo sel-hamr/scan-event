@@ -14,10 +14,8 @@ import {
 } from "@/components/ui/card";
 import Link from "next/link";
 import { Shield } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 function LoginContent() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -47,8 +45,8 @@ function LoginContent() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      const redirectTo = result?.user?.role === "PARTICIPANT" ? "/events" : "/";
+      window.location.href = redirectTo;
     } catch {
       setError("Something went wrong.");
       setLoading(false);
@@ -64,7 +62,7 @@ function LoginContent() {
 
       <Card className="w-full max-w-md bg-zinc-950/80 backdrop-blur-xl border-zinc-900 shadow-2xl">
         <CardHeader className="space-y-2 flex flex-col items-center pt-8 pb-4">
-          <div className="w-16 h-16 bg-gradient-to-tr from-zinc-800 to-zinc-900 rounded-2xl flex items-center justify-center mb-4 border border-zinc-800 shadow-inner">
+          <div className="w-16 h-16 bg-linear-to-tr from-zinc-800 to-zinc-900 rounded-2xl flex items-center justify-center mb-4 border border-zinc-800 shadow-inner">
             <Shield className="w-8 h-8 text-zinc-300" />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight text-white">

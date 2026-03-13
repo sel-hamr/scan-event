@@ -5,6 +5,8 @@ export function middleware(request: NextRequest) {
   const userId = request.cookies.get("userId")?.value;
   const userRole = request.cookies.get("userRole")?.value;
   const { pathname } = request.nextUrl;
+  const isParticipantTicketRoute =
+    pathname === "/tickets/mine" || pathname.startsWith("/tickets/mine/");
 
   const isPublicPath = pathname === "/login" || pathname === "/register";
 
@@ -14,6 +16,10 @@ export function middleware(request: NextRequest) {
 
   if (pathname === "/login" && userId) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (userId && userRole === "PARTICIPANT" && pathname === "/tickets") {
+    return NextResponse.redirect(new URL("/tickets/mine", request.url));
   }
 
   const participantRestrictedPaths = [
@@ -31,6 +37,7 @@ export function middleware(request: NextRequest) {
   if (
     userId &&
     userRole === "PARTICIPANT" &&
+    !isParticipantTicketRoute &&
     participantRestrictedPaths.some(
       (restrictedPath) =>
         pathname === restrictedPath ||

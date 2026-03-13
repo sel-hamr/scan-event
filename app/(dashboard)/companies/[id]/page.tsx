@@ -1,13 +1,11 @@
-"use client";
-
-import { mockCompanies, mockEvents } from "@/lib/mock-data";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "../../../../lib/prisma";
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Badge } from "../../../../components/ui/badge";
+import { cn } from "../../../../lib/utils";
+import { Button } from "../../../../components/ui/button";
 import {
-  PlusIcon,
-  SearchIcon,
   ArrowLeft,
   Building2,
   MapPin,
@@ -16,13 +14,17 @@ import {
   Phone,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../../components/ui/card";
+
+export const dynamic = "force-dynamic";
 
 const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case "published":
       return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
     case "draft":
@@ -38,42 +40,37 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
-export default function CompanyDetailsPage() {
-  const params = useParams();
-  const id = params?.id as string;
+export default async function CompanyDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-  const company = mockCompanies.find((c) => c.id === id);
-  const companyEvents = mockEvents.filter((e) => e.company_id === id);
+  const company = await prisma.company.findUnique({
+    where: { id },
+    include: {
+      events: {
+        orderBy: { dateStart: "desc" },
+      },
+    },
+  });
 
   if (!company) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center h-[50vh]">
-        <h2 className="text-xl font-semibold mb-2">Company Not Found</h2>
-        <p className="text-muted-foreground mb-6">
-          The company you are looking for does not exist or has been removed.
-        </p>
-        <Link href="/companies">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Companies
-          </Button>
-        </Link>
-      </div>
-    );
+    notFound();
   }
 
-  const totalAttendees = companyEvents.reduce(
-    (acc, event) => acc + event.attendees_count,
+  const totalAttendees = company.events.reduce(
+    (acc, event) => acc + event.attendeesCount,
     0,
   );
-  const totalRevenue = companyEvents.reduce(
+  const totalRevenue = company.events.reduce(
     (acc, event) => acc + event.revenue,
     0,
   );
 
   return (
     <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500 pb-10">
-      {/* Header & Back button */}
       <div className="flex flex-col gap-4">
         <div>
           <Link href="/companies">
@@ -100,21 +97,11 @@ export default function CompanyDetailsPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" className="rounded-xl">
-                Edit Company
-              </Button>
-              <Button className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                New Event
-              </Button>
-            </div>
           </div>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Company Info Box */}
         <Card className="md:col-span-1 rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur h-fit">
           <CardHeader>
             <CardTitle className="text-lg">Company Info</CardTitle>
@@ -151,21 +138,19 @@ export default function CompanyDetailsPage() {
                 <span className="text-foreground/90">{company.phone}</span>
               </div>
             )}
-            {company.created_at && (
-              <div className="flex gap-3 text-sm">
-                <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                <span className="text-foreground/90">
-                  Joined {format(new Date(company.created_at), "MMMM yyyy")}
-                </span>
-              </div>
-            )}
+            <div className="flex gap-3 text-sm">
+              <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              <span className="text-foreground/90">
+                Joined {format(new Date(company.createdAt), "MMMM yyyy")}
+              </span>
+            </div>
 
             <div className="pt-4 mt-2 border-t border-border/50 grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">
                   Total Events
                 </p>
-                <p className="text-xl font-bold">{companyEvents.length}</p>
+                <p className="text-xl font-bold">{company.events.length}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">
@@ -187,21 +172,10 @@ export default function CompanyDetailsPage() {
           </CardContent>
         </Card>
 
-        {/* Events List */}
         <div className="md:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Events Organized</h2>
-            <div className="relative w-full sm:w-64 max-w-[200px]">
-              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Filter events..."
-                className="w-full bg-background pl-9 rounded-xl h-9 text-sm"
-              />
-            </div>
-          </div>
+          <h2 className="text-xl font-bold">Events Organized</h2>
 
-          {companyEvents.length === 0 ? (
+          {company.events.length === 0 ? (
             <Card className="rounded-2xl border border-dashed border-border/60 bg-transparent shadow-none">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -211,21 +185,16 @@ export default function CompanyDetailsPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   This company hasn't organized any events yet.
                 </p>
-                <Button size="sm" className="rounded-xl">
-                  Create their first event
-                </Button>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {companyEvents.map((event) => (
+              {company.events.map((event) => (
                 <Card
                   key={event.id}
                   className="overflow-hidden rounded-2xl border-border/50 bg-card/50 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1 hover:shadow-md group flex flex-col"
                 >
                   <div className="h-28 bg-muted relative border-b border-border/50 shrink-0">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-accent-purple/20 opacity-50"></div>
-
                     <div className="absolute top-3 right-3 flex gap-2">
                       <Badge
                         variant="outline"
@@ -234,19 +203,8 @@ export default function CompanyDetailsPage() {
                           getStatusBadgeVariant(event.status),
                         )}
                       >
-                        {event.status}
+                        {event.status.toLowerCase()}
                       </Badge>
-                    </div>
-
-                    <div className="absolute bottom-3 left-3">
-                      <div className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-background text-foreground shadow-sm min-w-10 border border-border/50">
-                        <span className="text-[9px] font-bold uppercase text-primary leading-none mb-1">
-                          {format(new Date(event.date_start), "MMM")}
-                        </span>
-                        <span className="text-sm font-bold leading-none">
-                          {format(new Date(event.date_start), "dd")}
-                        </span>
-                      </div>
                     </div>
                   </div>
 
@@ -270,7 +228,7 @@ export default function CompanyDetailsPage() {
                           Tickets Sold
                         </span>
                         <span className="text-sm font-bold">
-                          {event.tickets_sold}
+                          {event.ticketsSold}
                         </span>
                       </div>
                       <div className="flex flex-col">

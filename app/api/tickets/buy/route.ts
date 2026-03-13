@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { TicketType } from "@prisma/client";
+
+const validTicketTypes = new Set<TicketType>([
+  TicketType.VIP,
+  TicketType.STANDARD,
+  TicketType.FREE,
+  TicketType.EARLY_BIRD,
+]);
 
 export async function POST(request: Request) {
   try {
@@ -13,10 +21,20 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const eventId = typeof body?.eventId === "string" ? body.eventId : "";
+    const requestedTicketType =
+      typeof body?.ticketType === "string" ? body.ticketType.toUpperCase() : "";
+    const ticketType = requestedTicketType as TicketType;
 
     if (!eventId) {
       return NextResponse.json(
         { error: "Event id is required" },
+        { status: 400 },
+      );
+    }
+
+    if (!validTicketTypes.has(ticketType)) {
+      return NextResponse.json(
+        { error: "Ticket type is required" },
         { status: 400 },
       );
     }
@@ -56,6 +74,7 @@ export async function POST(request: Request) {
     const availableTicket = await prisma.ticket.findFirst({
       where: {
         eventId,
+        type: ticketType,
         userId: null,
         status: "ACTIVE",
       },
@@ -69,7 +88,10 @@ export async function POST(request: Request) {
     });
 
     if (!availableTicket) {
-      return NextResponse.json({ error: "Tickets sold out" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Selected ticket type is sold out" },
+        { status: 400 },
+      );
     }
 
     const price = availableTicket.price;
@@ -81,6 +103,24 @@ export async function POST(request: Request) {
           userId,
         },
       });
+
+      const existingQrCode = await tx.qrCode.findFirst({
+        where: {
+          ticketId: assigned.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!existingQrCode) {
+        await tx.qrCode.create({
+          data: {
+            ticketId: assigned.id,
+            code: `ticket:${assigned.id}`,
+          },
+        });
+      }
 
       await tx.event.update({
         where: { id: eventId },
