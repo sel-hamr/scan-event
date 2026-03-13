@@ -21,10 +21,13 @@ import {
   PlusIcon,
   TrashIcon,
   Loader2Icon,
+  CalendarIcon,
+  Clock3Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import {
   Select,
   SelectContent,
@@ -32,12 +35,58 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 const STEPS = [
   { id: 1, name: "Event Details", description: "Basic info" },
   { id: 2, name: "Sessions", description: "Schedule & speakers" },
   { id: 3, name: "Tickets", description: "Pricing & capacity" },
 ];
+
+const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const hours = Math.floor(index / 4)
+    .toString()
+    .padStart(2, "0");
+  const minutes = ((index % 4) * 15).toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+});
+
+function parseDateValue(value: string) {
+  if (!value) return undefined;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+function TimePickerSelect({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(val: string | null) => onChange(val || "")}
+    >
+      <SelectTrigger className="rounded-xl w-full">
+        <SelectValue placeholder="Select time" />
+      </SelectTrigger>
+      <SelectContent className="max-h-64 rounded-xl">
+        {TIME_OPTIONS.map((timeOption) => (
+          <SelectItem key={timeOption} value={timeOption}>
+            {timeOption}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export default function CreateEventPage() {
   const router = useRouter();
@@ -49,6 +98,7 @@ export default function CreateEventPage() {
     title: "",
     dateStart: "",
     dateEnd: "",
+    status: "DRAFT",
     location: "",
     companyId: "",
     description: "",
@@ -72,6 +122,18 @@ export default function CreateEventPage() {
   const [speakers, setSpeakers] = useState<Array<{ id: string; name: string }>>(
     [],
   );
+  const [sponsors, setSponsors] = useState<
+    Array<{ id: string; name: string; company: string; tier: string }>
+  >([]);
+  const [exposants, setExposants] = useState<
+    Array<{ id: string; name: string; company: string; standNumber: string }>
+  >([]);
+  const [selectedSponsorIds, setSelectedSponsorIds] = useState<string[]>([]);
+  const [currentUser, setCurrentUser] = useState<{
+    role: string;
+    companyId: string | null;
+  } | null>(null);
+  const [selectedExposantIds, setSelectedExposantIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -80,6 +142,20 @@ export default function CreateEventPage() {
       const payload = await response.json();
       setCompanies(payload.companies || []);
       setSpeakers(payload.speakers || []);
+      setSponsors(payload.sponsors || []);
+      setExposants(payload.exposants || []);
+      if (payload.currentUser) {
+        setCurrentUser(payload.currentUser);
+        if (
+          payload.currentUser.role === "ORGANISATEUR" &&
+          payload.currentUser.companyId
+        ) {
+          setEventDetails((prev) => ({
+            ...prev,
+            companyId: payload.currentUser.companyId,
+          }));
+        }
+      }
     };
 
     loadOptions();
@@ -121,6 +197,16 @@ export default function CreateEventPage() {
   };
 
   const handlePublish = async () => {
+    const effectiveCompanyId =
+      currentUser?.role === "ORGANISATEUR"
+        ? (currentUser.companyId ?? "")
+        : eventDetails.companyId;
+
+    if (!effectiveCompanyId) {
+      alert("Please select a company before publishing the event.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch("/api/events", {
@@ -130,23 +216,48 @@ export default function CreateEventPage() {
         },
         body: JSON.stringify({
           ...eventDetails,
+          companyId: effectiveCompanyId,
           sessions,
           tickets,
+          sponsorIds: selectedSponsorIds,
+          exposantIds: selectedExposantIds,
         }),
       });
 
+      const result = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Failed to create event");
+        throw new Error(result?.error || "Failed to create event");
       }
 
       router.push("/events");
       router.refresh();
     } catch (error) {
       console.error("Error creating event:", error);
-      alert("Failed to create event. Please try again.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to create event. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleSponsorSelection = (id: string) => {
+    setSelectedSponsorIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
+  };
+
+  const toggleExposantSelection = (id: string) => {
+    setSelectedExposantIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
   };
 
   return (
@@ -242,36 +353,101 @@ export default function CreateEventPage() {
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="date-start">Start Date</Label>
-                  <Input
-                    id="date-start"
-                    type="date"
-                    className="rounded-xl"
-                    value={eventDetails.dateStart}
-                    onChange={(e) =>
-                      setEventDetails({
-                        ...eventDetails,
-                        dateStart: e.target.value,
-                      })
-                    }
-                  />
+                  <Popover>
+                    <PopoverTrigger>
+                      <Button
+                        id="date-start"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start rounded-xl text-left font-normal",
+                          !eventDetails.dateStart && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {eventDetails.dateStart
+                          ? format(
+                              parseDateValue(eventDetails.dateStart) ||
+                                new Date(eventDetails.dateStart),
+                              "PPP",
+                            )
+                          : "Pick start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={parseDateValue(eventDetails.dateStart)}
+                        onSelect={(date) =>
+                          setEventDetails({
+                            ...eventDetails,
+                            dateStart: date ? format(date, "yyyy-MM-dd") : "",
+                          })
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="date-end">End Date</Label>
-                  <Input
-                    id="date-end"
-                    type="date"
-                    className="rounded-xl"
-                    value={eventDetails.dateEnd}
-                    onChange={(e) =>
-                      setEventDetails({
-                        ...eventDetails,
-                        dateEnd: e.target.value,
-                      })
-                    }
-                  />
+                  <Popover>
+                    <PopoverTrigger>
+                      <Button
+                        id="date-end"
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start rounded-xl text-left font-normal",
+                          !eventDetails.dateEnd && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {eventDetails.dateEnd
+                          ? format(
+                              parseDateValue(eventDetails.dateEnd) ||
+                                new Date(eventDetails.dateEnd),
+                              "PPP",
+                            )
+                          : "Pick end date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={parseDateValue(eventDetails.dateEnd)}
+                        onSelect={(date) =>
+                          setEventDetails({
+                            ...eventDetails,
+                            dateEnd: date ? format(date, "yyyy-MM-dd") : "",
+                          })
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
+                <div className="grid gap-2 w-full">
+                  <Label htmlFor="status">Event Status</Label>
+                  <Select
+                    value={eventDetails.status}
+                    onValueChange={(value: string | null) =>
+                      setEventDetails({
+                        ...eventDetails,
+                        status: value || "DRAFT",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="rounded-xl w-full" id="status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                      <SelectItem value="ONGOING">Ongoing</SelectItem>
+                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="location">Location or URL</Label>
                   <Input
@@ -287,26 +463,41 @@ export default function CreateEventPage() {
                     }
                   />
                 </div>
-                <div className="grid gap-2 w-full">
-                  <Label htmlFor="company">Company</Label>
-                  <Select
-                    value={eventDetails.companyId}
-                    onValueChange={(val: string | null) =>
-                      setEventDetails({ ...eventDetails, companyId: val || "" })
-                    }
-                  >
-                    <SelectTrigger className="rounded-xl w-full" id="company">
-                      <SelectValue placeholder="Select a company" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {currentUser?.role === "SUPER_ADMIN" && (
+                  <div className="grid gap-2 w-full">
+                    <Label htmlFor="company">Company</Label>
+                    <Select
+                      value={eventDetails.companyId}
+                      onValueChange={(val: string | null) =>
+                        setEventDetails({
+                          ...eventDetails,
+                          companyId: val || "",
+                        })
+                      }
+                    >
+                      <SelectTrigger className="rounded-xl w-full" id="company">
+                        <SelectValue placeholder="Select a company" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {eventDetails.companyId ? (
+                      <p className="text-xs text-muted-foreground">
+                        Selected company:{" "}
+                        <span className="font-medium text-foreground">
+                          {companies.find(
+                            (company) => company.id === eventDetails.companyId,
+                          )?.name ?? "Unknown company"}
+                        </span>
+                      </p>
+                    ) : null}
+                  </div>
+                )}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
@@ -322,6 +513,76 @@ export default function CreateEventPage() {
                     })
                   }
                 />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label>Assign Sponsors from Database</Label>
+                  <div className="max-h-48 space-y-2 overflow-auto rounded-xl border border-border/50 bg-background/30 p-3">
+                    {sponsors.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No sponsors available.
+                      </p>
+                    ) : (
+                      sponsors.map((sponsor) => (
+                        <label
+                          key={sponsor.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted/50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSponsorIds.includes(sponsor.id)}
+                            onChange={() => toggleSponsorSelection(sponsor.id)}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium leading-none">
+                              {sponsor.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {sponsor.company} • {sponsor.tier}
+                            </p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Assign Exposants from Database</Label>
+                  <div className="max-h-48 space-y-2 overflow-auto rounded-xl border border-border/50 bg-background/30 p-3">
+                    {exposants.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No exposants available.
+                      </p>
+                    ) : (
+                      exposants.map((exposant) => (
+                        <label
+                          key={exposant.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted/50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedExposantIds.includes(exposant.id)}
+                            onChange={() =>
+                              toggleExposantSelection(exposant.id)
+                            }
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium leading-none">
+                              {exposant.company}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {exposant.name} • Stand {exposant.standNumber}
+                            </p>
+                          </div>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -396,6 +657,16 @@ export default function CreateEventPage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {session.speaker ? (
+                              <p className="text-xs text-muted-foreground">
+                                Selected speaker:{" "}
+                                <span className="font-medium text-foreground">
+                                  {speakers.find(
+                                    (speaker) => speaker.id === session.speaker,
+                                  )?.name ?? "Unknown speaker"}
+                                </span>
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                         <div className="grid gap-2">
@@ -416,25 +687,27 @@ export default function CreateEventPage() {
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
                             <Label>Start Time</Label>
-                            <Input
-                              type="time"
-                              className="rounded-xl"
-                              value={session.start}
-                              onChange={(e) =>
-                                updateSession(index, "start", e.target.value)
-                              }
-                            />
+                            <div className="flex items-center gap-2">
+                              <Clock3Icon className="h-4 w-4 text-muted-foreground" />
+                              <TimePickerSelect
+                                value={session.start}
+                                onChange={(value) =>
+                                  updateSession(index, "start", value)
+                                }
+                              />
+                            </div>
                           </div>
                           <div className="grid gap-2">
                             <Label>End Time</Label>
-                            <Input
-                              type="time"
-                              className="rounded-xl"
-                              value={session.end}
-                              onChange={(e) =>
-                                updateSession(index, "end", e.target.value)
-                              }
-                            />
+                            <div className="flex items-center gap-2">
+                              <Clock3Icon className="h-4 w-4 text-muted-foreground" />
+                              <TimePickerSelect
+                                value={session.end}
+                                onChange={(value) =>
+                                  updateSession(index, "end", value)
+                                }
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

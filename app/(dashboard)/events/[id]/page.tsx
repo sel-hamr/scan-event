@@ -11,6 +11,10 @@ import {
   Handshake,
   Building2,
   Mic2,
+  ShieldCheck,
+  Ticket,
+  Wallet,
+  UserCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,8 @@ import {
 } from "@/components/ui/table";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { BuyTicketButton } from "@/components/buy-ticket-button";
+import { EditEventDrawer } from "@/components/events/edit-event-drawer";
+import { EventManagementTabs } from "@/components/events/event-management-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +57,9 @@ const getStatusBadgeVariant = (status: string) => {
   }
 };
 
+const formatRoleLabel = (role?: string | null) =>
+  role ? role.replaceAll("_", " ").toLowerCase() : "user";
+
 export default async function EventDetailsPage({
   params,
 }: {
@@ -59,7 +68,14 @@ export default async function EventDetailsPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const currentRole = cookieStore.get("userRole")?.value;
-  const isParticipant = currentRole === "PARTICIPANT";
+  const currentUserId = cookieStore.get("userId")?.value;
+
+  const canBuyTicket = ["PARTICIPANT", "SCANNER", "SPEAKER"].includes(
+    currentRole ?? "",
+  );
+  const canViewManagementData = ["ORGANISATEUR", "SUPER_ADMIN"].includes(
+    currentRole ?? "",
+  );
 
   const event = await prisma.event.findUnique({
     where: { id },
@@ -112,6 +128,25 @@ export default async function EventDetailsPage({
     notFound();
   }
 
+  const canEditEvent =
+    currentRole === "SUPER_ADMIN" ||
+    currentRole === "ORGANISATEUR" ||
+    (currentRole === "PARTICIPANT" && currentUserId === event.organiserId);
+
+  const companies = canEditEvent
+    ? await prisma.company.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
+  const speakers = canEditEvent
+    ? await prisma.speaker.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
   const ticketSummary = event.tickets.reduce(
     (acc, ticket) => {
       const key = ticket.type;
@@ -147,7 +182,14 @@ export default async function EventDetailsPage({
     .filter((option) => option.available > 0)
     .sort((left, right) => left.price - right.price);
 
-  const currentUserId = cookieStore.get("userId")?.value;
+  const editableTicketTiers = Object.entries(ticketSummary).map(
+    ([type, summary]) => ({
+      type,
+      price: event.tickets.find((ticket) => ticket.type === type)?.price ?? 0,
+      capacity: summary.count,
+    }),
+  );
+
   const hasPurchasedTicket = !!currentUserId
     ? event.tickets.some(
         (ticket) =>
@@ -163,6 +205,17 @@ export default async function EventDetailsPage({
   const networkingAccepted = event.networkingRequests.filter(
     (request) => request.status === "ACCEPTED",
   ).length;
+
+  const roleContextLabel =
+    currentRole === "SUPER_ADMIN"
+      ? "Admin view"
+      : currentRole === "ORGANISATEUR"
+        ? "Organizer view"
+        : currentRole === "SCANNER"
+          ? "Scanner view"
+          : currentRole === "SPEAKER"
+            ? "Speaker view"
+            : "Participant view";
 
   const usersWithRoles = [
     {
@@ -184,97 +237,8 @@ export default async function EventDetailsPage({
       arr.findIndex((candidate) => candidate.id === user.id) === index,
   );
 
-  return (
-    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 pb-10">
-      <div className="flex flex-col gap-3">
-        <Link href="/events">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-fit -ml-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Events
-          </Button>
-        </Link>
-
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">
-                {event.title}
-              </h1>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "capitalize",
-                  getStatusBadgeVariant(event.status.toLowerCase()),
-                )}
-              >
-                {event.status.toLowerCase()}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground mt-2 max-w-3xl">
-              {event.description || "No description provided."}
-            </p>
-          </div>
-          {currentRole === "PARTICIPANT" ? (
-            <BuyTicketButton
-              eventId={event.id}
-              ticketOptions={availableTicketOptions}
-              hasPurchased={hasPurchasedTicket}
-            />
-          ) : (
-            <Link href="/events/create">
-              <Button className="rounded-xl">Create Event</Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="rounded-2xl border-border/50 bg-card/50">
-          <CardHeader className="pb-2">
-            <CardDescription>Date</CardDescription>
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-primary" />
-              {format(new Date(event.dateStart), "MMM dd, yyyy")}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="rounded-2xl border-border/50 bg-card/50">
-          <CardHeader className="pb-2">
-            <CardDescription>Location</CardDescription>
-            <CardTitle className="text-base flex items-center gap-2 line-clamp-1">
-              <MapPin className="h-4 w-4 text-primary" />
-              {event.location}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
-        <Card className="rounded-2xl border-border/50 bg-card/50">
-          <CardHeader className="pb-2">
-            <CardDescription>Tickets</CardDescription>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              {event.ticketsSold}/{event.attendeesCount}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-
-        {isParticipant && (
-          <Card className="rounded-2xl border-border/50 bg-card/50">
-            <CardHeader className="pb-2">
-              <CardDescription></CardDescription>
-              <CardTitle className="text-base">
-                {formatCurrency(event.revenue)}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        )}
-      </div>
-
+  const infoSections = (
+    <>
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="rounded-2xl border-border/50 bg-card/50 lg:col-span-2">
           <CardHeader>
@@ -419,42 +383,258 @@ export default async function EventDetailsPage({
           )}
         </CardContent>
       </Card>
+    </>
+  );
 
-      <Card className="rounded-2xl border-border/50 bg-card/50">
-        <CardHeader>
-          <CardTitle>Users & Roles</CardTitle>
-          <CardDescription>
-            {usersWithRoles.length} user{usersWithRoles.length === 1 ? "" : "s"}{" "}
-            linked to this event
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Source</TableHead>
+  const managementUsersCard = (
+    <Card className="rounded-2xl border-border/50 bg-card/50">
+      <CardHeader>
+        <CardTitle>Users & Roles</CardTitle>
+        <CardDescription>
+          {usersWithRoles.length} user
+          {usersWithRoles.length === 1 ? "" : "s"} linked to this event
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Source</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {usersWithRoles.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[10px] uppercase">
+                    {user.role.replace("_", " ")}
+                  </Badge>
+                </TableCell>
+                <TableCell>{user.source}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usersWithRoles.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px] uppercase">
-                      {user.role.replace("_", " ")}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{user.source}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  const attendeeCommunityCard = (
+    <Card className="rounded-2xl border-border/50 bg-card/50">
+      <CardHeader>
+        <CardTitle>Community Snapshot</CardTitle>
+        <CardDescription>
+          Live participation overview for attendees and speakers.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-border/50 bg-background/30 p-3">
+          <p className="text-xs text-muted-foreground">Sponsors</p>
+          <p className="text-xl font-semibold">{event.sponsors.length}</p>
+        </div>
+        <div className="rounded-xl border border-border/50 bg-background/30 p-3">
+          <p className="text-xs text-muted-foreground">Exposants</p>
+          <p className="text-xl font-semibold">{event.exposants.length}</p>
+        </div>
+        <div className="rounded-xl border border-border/50 bg-background/30 p-3">
+          <p className="text-xs text-muted-foreground">Networking Accepted</p>
+          <p className="text-xl font-semibold">{networkingAccepted}</p>
+        </div>
+        <div className="rounded-xl border border-border/50 bg-background/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            Confirmed Registrations
+          </p>
+          <p className="text-xl font-semibold">{registrationConfirmed}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-500 pb-10">
+      <div className="flex flex-col gap-3">
+        <Link href="/events">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit -ml-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Events
+          </Button>
+        </Link>
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">
+                {event.title}
+              </h1>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "capitalize",
+                  getStatusBadgeVariant(event.status.toLowerCase()),
+                )}
+              >
+                {event.status.toLowerCase()}
+              </Badge>
+              <Badge variant="secondary" className="capitalize">
+                {roleContextLabel}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mt-2 max-w-3xl">
+              {event.description || "No description provided."}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/50 px-2 py-1">
+                <CalendarDays className="h-3.5 w-3.5" />
+                {format(new Date(event.dateStart), "dd MMM yyyy")} -{" "}
+                {format(new Date(event.dateEnd), "dd MMM yyyy")}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/50 px-2 py-1">
+                <MapPin className="h-3.5 w-3.5" />
+                {event.location}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background/50 px-2 py-1 capitalize">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Signed in as {formatRoleLabel(currentRole)}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {canBuyTicket ? (
+              <BuyTicketButton
+                eventId={event.id}
+                ticketOptions={availableTicketOptions}
+                hasPurchased={hasPurchasedTicket}
+              />
+            ) : null}
+
+            {canEditEvent ? (
+              <EditEventDrawer
+                event={{
+                  id: event.id,
+                  title: event.title,
+                  description: event.description ?? "",
+                  location: event.location,
+                  status: event.status,
+                  dateStart: event.dateStart.toISOString(),
+                  dateEnd: event.dateEnd.toISOString(),
+                  companyId: event.companyId,
+                  category: event.category,
+                  banner: event.banner,
+                  dateEndRegistration:
+                    event.dateEndRegistration?.toISOString() ?? null,
+                  typeTicket: event.typeTicket,
+                  price: event.price,
+                  sessions: event.sessions.map((session) => ({
+                    id: session.id,
+                    title: session.title,
+                    description: session.description ?? "",
+                    speakerId: session.speakerId,
+                    start: session.start.toISOString(),
+                    end: session.end.toISOString(),
+                  })),
+                  ticketTiers: editableTicketTiers,
+                }}
+                companies={companies}
+                speakers={speakers}
+              />
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="rounded-2xl border-border/50 bg-card/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Date</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" />
+              {format(new Date(event.dateStart), "MMM dd, yyyy")}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="rounded-2xl border-border/50 bg-card/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Location</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2 line-clamp-1">
+              <MapPin className="h-4 w-4 text-primary" />
+              {event.location}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="rounded-2xl border-border/50 bg-card/50">
+          <CardHeader className="pb-2">
+            <CardDescription>Tickets</CardDescription>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Ticket className="h-4 w-4 text-primary" />
+              {event.ticketsSold}/{event.attendeesCount}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+
+        {canViewManagementData ? (
+          <Card className="rounded-2xl border-border/50 bg-card/50">
+            <CardHeader className="pb-2">
+              <CardDescription>Revenue</CardDescription>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                {formatCurrency(totalTicketRevenue)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        ) : (
+          <Card className="rounded-2xl border-border/50 bg-card/50">
+            <CardHeader className="pb-2">
+              <CardDescription>Confirmed attendees</CardDescription>
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-primary" />
+                {registrationConfirmed}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+        )}
+      </div>
+
+      {canViewManagementData ? (
+        <EventManagementTabs
+          ticketBreakdown={Object.entries(ticketSummary).map(
+            ([type, summary]) => ({
+              type: type.replaceAll("_", " "),
+              total: summary.count,
+              sold: summary.sold,
+              revenue: summary.revenue,
+            }),
+          )}
+          registrationsConfirmed={registrationConfirmed}
+          registrationsTotal={event.registrations.length}
+          ticketsSold={event.ticketsSold}
+          networkingAccepted={networkingAccepted}
+          networkingTotal={event.networkingRequests.length}
+          sponsorsCount={event.sponsors.length}
+          exposantsCount={event.exposants.length}
+          sessionsCount={event.sessions.length}
+          roomsCount={event.rooms.length}
+          totalRevenue={totalTicketRevenue}
+        >
+          {infoSections}
+          {managementUsersCard}
+        </EventManagementTabs>
+      ) : (
+        <>
+          {infoSections}
+          {attendeeCommunityCard}
+        </>
+      )}
     </div>
   );
 }

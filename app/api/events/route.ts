@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { EventStatus } from "@prisma/client";
+import { cookies } from "next/headers";
 
 export async function GET() {
   try {
@@ -26,21 +28,79 @@ export async function POST(req: Request) {
       title,
       dateStart,
       dateEnd,
+      status,
       location,
       companyId,
       description,
       sessions,
       tickets,
+      sponsorIds,
+      exposantIds,
     } = data;
 
-    // Use the first user as organiser for now
-    const user = await prisma.user.findFirst();
+    const cookieStore = await cookies();
+    const currentUserId = cookieStore.get("userId")?.value;
+
+    const user = currentUserId
+      ? await prisma.user.findUnique({
+          where: { id: currentUserId },
+          select: { id: true, role: true, companyId: true },
+        })
+      : await prisma.user.findFirst({
+          select: { id: true, role: true, companyId: true },
+        });
+
     if (!user) {
       return NextResponse.json(
         { error: "No user found in database to act as organiser" },
         { status: 400 },
       );
     }
+
+    const requestedCompanyId =
+      typeof companyId === "string" ? companyId.trim() : "";
+
+    const normalizedCompanyId =
+      user.role === "ORGANISATEUR"
+        ? (user.companyId?.trim() ?? "")
+        : requestedCompanyId;
+
+    if (!normalizedCompanyId) {
+      return NextResponse.json(
+        {
+          error:
+            user.role === "ORGANISATEUR"
+              ? "Your organizer account must be linked to a company before creating events."
+              : "Please select a valid company before creating the event.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const companyExists = await prisma.company.findUnique({
+      where: { id: normalizedCompanyId },
+      select: { id: true },
+    });
+
+    if (!companyExists) {
+      return NextResponse.json(
+        { error: "Selected company was not found." },
+        { status: 400 },
+      );
+    }
+
+    const normalizedStatus =
+      typeof status === "string" && status in EventStatus
+        ? (status as EventStatus)
+        : EventStatus.DRAFT;
+
+    const normalizedSponsorIds = Array.isArray(sponsorIds)
+      ? sponsorIds.filter((id): id is string => typeof id === "string")
+      : [];
+
+    const normalizedExposantIds = Array.isArray(exposantIds)
+      ? exposantIds.filter((id): id is string => typeof id === "string")
+      : [];
 
     const totalCapacity = tickets
       ? tickets.reduce(
@@ -55,8 +115,9 @@ export async function POST(req: Request) {
         dateStart: new Date(dateStart),
         dateEnd: new Date(dateEnd),
         location: location || "TBD",
+        status: normalizedStatus,
         description: description || "",
-        companyId,
+        companyId: normalizedCompanyId,
         organiserId: user.id,
         attendeesCount: totalCapacity,
         rooms: {
@@ -115,6 +176,49 @@ export async function POST(req: Request) {
       if (ticketRecords.length > 0) {
         await prisma.ticket.createMany({
           data: ticketRecords,
+        });
+      }
+    }
+
+    if (normalizedSponsorIds.length > 0) {
+      const selectedSponsors = await prisma.sponsor.findMany({
+        where: { id: { in: normalizedSponsorIds } },
+        select: { name: true, company: true, tier: true, logo: true },
+      });
+
+      if (selectedSponsors.length > 0) {
+        await prisma.sponsor.createMany({
+          data: selectedSponsors.map((sponsor) => ({
+            name: sponsor.name,
+            company: sponsor.company,
+            tier: sponsor.tier,
+            logo: sponsor.logo,
+            eventId: event.id,
+          })),
+        });
+      }
+    }
+
+    if (normalizedExposantIds.length > 0) {
+      const selectedExposants = await prisma.exposant.findMany({
+        where: { id: { in: normalizedExposantIds } },
+        select: {
+          name: true,
+          email: true,
+          company: true,
+          standNumber: true,
+        },
+      });
+
+      if (selectedExposants.length > 0) {
+        await prisma.exposant.createMany({
+          data: selectedExposants.map((exposant) => ({
+            name: exposant.name,
+            email: exposant.email,
+            company: exposant.company,
+            standNumber: exposant.standNumber,
+            eventId: event.id,
+          })),
         });
       }
     }

@@ -44,6 +44,13 @@ const participantNavItems = [
   { label: "Notifications", href: "/notifications", icon: Bell },
 ];
 
+const organizerNavItems = [
+  { label: "Users", href: "/networking/users", icon: Users },
+  { label: "Events", href: "/events", icon: Calendar },
+  { label: "Networking", href: "/networking", icon: Users },
+  { label: "Notifications", href: "/notifications", icon: Bell },
+];
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebarStore();
@@ -77,7 +84,11 @@ export function AppSidebar() {
   }, []);
 
   const visibleNavItems =
-    userRole === "PARTICIPANT" ? participantNavItems : navItems;
+    userRole === "PARTICIPANT"
+      ? participantNavItems
+      : userRole === "ORGANISATEUR"
+        ? organizerNavItems
+        : navItems;
 
   return (
     <aside
