@@ -64,6 +64,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { isCollapsed, toggle } = useSidebarStore();
   const [userRole, setUserRole] = React.useState<string | null>(null);
+  const [roleLoaded, setRoleLoaded] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -72,16 +73,23 @@ export function AppSidebar() {
       try {
         const response = await fetch("/api/me", { cache: "no-store" });
         if (!response.ok) {
-          if (active) setUserRole(null);
+          if (active) {
+            setUserRole(null);
+            setRoleLoaded(true);
+          }
           return;
         }
 
         const data = await response.json();
         if (active) {
           setUserRole(data?.user?.role ?? null);
+          setRoleLoaded(true);
         }
       } catch {
-        if (active) setUserRole(null);
+        if (active) {
+          setUserRole(null);
+          setRoleLoaded(true);
+        }
       }
     };
 
@@ -92,8 +100,9 @@ export function AppSidebar() {
     };
   }, []);
 
-  const visibleNavItems =
-    userRole === "PARTICIPANT"
+  const visibleNavItems = !roleLoaded
+    ? []
+    : userRole === "PARTICIPANT"
       ? participantNavItems
       : userRole === "SCANNER"
         ? scannerNavItems
@@ -137,6 +146,7 @@ export function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               title={isCollapsed ? item.label : undefined}
               className={cn(
                 "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",

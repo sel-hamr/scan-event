@@ -86,6 +86,8 @@ Optional query param:
 
 - `ticket=true` → include all tickets for the authenticated user.
 - `event=true` → include all events related to the authenticated user.
+- `speaker=true` → with `event=true`, include `speakers` per event.
+- `withsession=true` → with `event=true`, include `sessions` per event.
 
 ### Headers
 
@@ -172,6 +174,69 @@ Authorization: Bearer <JWT_TOKEN>
 }
 ```
 
+### Success response with events + speakers + sessions (200)
+
+`GET /api/v2/me?event=true&speaker=true&withsession=true`
+
+```json
+{
+  "success": true,
+  "user": {
+    "id": "clx...",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "role": "PARTICIPANT",
+    "avatar": null,
+    "phone": null
+  },
+  "events": [
+    {
+      "id": "cle...",
+      "title": "DevFest Morocco 2026",
+      "dateStart": "2026-06-10T09:00:00.000Z",
+      "dateEnd": "2026-06-11T18:00:00.000Z",
+      "location": "Casablanca",
+      "status": "PUBLISHED",
+      "organiserId": "clx...",
+      "speakers": [
+        {
+          "id": "cls...",
+          "name": "Jane Smith",
+          "email": "jane@example.com",
+          "avatar": null,
+          "bio": "Senior Engineer",
+          "topic": "Modern Web",
+          "company": "EventScan"
+        }
+      ],
+      "sessions": [
+        {
+          "id": "clse...",
+          "title": "Next.js in Production",
+          "description": "Deep dive session",
+          "start": "2026-06-10T10:00:00.000Z",
+          "end": "2026-06-10T11:00:00.000Z",
+          "room": {
+            "id": "clr...",
+            "name": "Main Hall",
+            "capacity": 250
+          },
+          "speaker": {
+            "id": "cls...",
+            "name": "Jane Smith",
+            "email": "jane@example.com",
+            "avatar": null,
+            "bio": "Senior Engineer",
+            "topic": "Modern Web",
+            "company": "EventScan"
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
 ### Error responses
 
 - `401` → `{"error":"Unauthorized."}`
@@ -246,6 +311,8 @@ Default validity rule:
 - `location` → partial location match
 - `category` → partial category match
 - `companyId` → exact company id
+- `speaker` → `true` to include `speakers` per event
+- `withsession` → `true` to include `sessions` per event
 - `from` → event start date >= this date (`ISO date`)
 - `to` → event start date <= this date (`ISO date`)
 - `page` → default `1`
@@ -270,6 +337,8 @@ Default validity rule:
     "location": "casablanca",
     "category": null,
     "companyId": null,
+    "speaker": false,
+    "withsession": false,
     "from": "2026-06-01T00:00:00.000Z",
     "to": null
   },
@@ -366,6 +435,50 @@ Authorization: Bearer <JWT_TOKEN>
 
 - `401` → `{"error":"Unauthorized."}`
 - `500` → `{"error":"Something went wrong."}`
+
+## POST /api/v2/tickets/buy
+
+Buy a ticket for an event (authenticated user).
+
+### Headers
+
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
+
+### Request body
+
+```json
+{
+  "eventId": "cle...",
+  "ticketType": "STANDARD"
+}
+```
+
+Notes:
+
+- `eventId` is required.
+- `ticketType` is required and must be one of `VIP`, `STANDARD`, `FREE`, `EARLY_BIRD`.
+- A user can only have one active/used ticket per event.
+
+### Success response (200)
+
+```json
+{
+  "success": true,
+  "ticketId": "clt..."
+}
+```
+
+### Error responses
+
+- `400` → `{"error":"Event id is required"}`
+- `400` → `{"error":"Ticket type is required"}`
+- `400` → `{"error":"You already have a ticket for this event"}`
+- `400` → `{"error":"Selected ticket type is sold out"}`
+- `401` → `{"error":"Unauthorized."}`
+- `404` → `{"error":"Event not found"}`
+- `500` → `{"error":"Failed to buy ticket."}`
 
 ## POST /api/v2/scan-ticket
 

@@ -5,6 +5,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import {
   CalendarIcon,
   CreditCardIcon,
+  LoaderCircleIcon,
   TicketIcon,
   UsersIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import {
 import { format } from "date-fns";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type DashboardData = {
   kpiData: {
@@ -77,8 +79,36 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-[40vh] text-muted-foreground">
-        Loading dashboard...
+      <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+            <p className="text-muted-foreground">
+              Platform activities and overall performance metrics.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-border/50 bg-card/60 px-3 py-1.5 text-sm text-muted-foreground">
+            <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+            Loading...
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-30 rounded-2xl" />
+          <Skeleton className="h-30 rounded-2xl" />
+          <Skeleton className="h-30 rounded-2xl" />
+          <Skeleton className="h-30 rounded-2xl" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-7">
+          <Skeleton className="col-span-full md:col-span-4 xl:col-span-5 h-95 rounded-2xl" />
+          <Skeleton className="col-span-full md:col-span-3 xl:col-span-2 h-95 rounded-2xl" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-86 rounded-2xl" />
+          <Skeleton className="h-86 rounded-2xl" />
+        </div>
       </div>
     );
   }

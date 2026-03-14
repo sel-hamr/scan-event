@@ -18,7 +18,7 @@ import {
   Calendar,
   ArrowUpRight,
   MoreHorizontalIcon,
-  Star
+  Star,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -83,6 +83,13 @@ const getTierIcon = (tier: string) => {
   }
 };
 
+const TIER_PRIORITY: Record<string, number> = {
+  PLATINUM: 4,
+  GOLD: 3,
+  SILVER: 2,
+  BRONZE: 1,
+};
+
 export default async function SponsorsPage({
   searchParams,
 }: SponsorsPageProps) {
@@ -92,7 +99,9 @@ export default async function SponsorsPage({
       ? resolvedSearchParams.q.trim()
       : "";
 
-  const isTierSearch = ["PLATINUM", "GOLD", "SILVER", "BRONZE"].includes(query.toUpperCase());
+  const isTierSearch = ["PLATINUM", "GOLD", "SILVER", "BRONZE"].includes(
+    query.toUpperCase(),
+  );
 
   const sponsors = await prisma.sponsor.findMany({
     where: query
@@ -122,9 +131,62 @@ export default async function SponsorsPage({
     orderBy: [{ tier: "asc" }, { company: "asc" }],
   });
 
-  const totalSponsors = sponsors.length;
-  const topTierSponsors = sponsors.filter(s => s.tier === 'PLATINUM' || s.tier === 'GOLD').length;
-  const uniqueEvents = new Set(sponsors.map(s => s.eventId)).size;
+  const groupedSponsors = Array.from(
+    sponsors.reduce(
+      (acc, sponsor) => {
+        const key = sponsor.name.trim().toLowerCase();
+        const existing = acc.get(key);
+
+        if (!existing) {
+          acc.set(key, {
+            id: sponsor.id,
+            name: sponsor.name,
+            company: sponsor.company,
+            logo: sponsor.logo,
+            tier: sponsor.tier,
+            events: [sponsor.event],
+          });
+          return acc;
+        }
+
+        existing.events.push(sponsor.event);
+
+        const existingTierScore = TIER_PRIORITY[existing.tier] ?? 0;
+        const currentTierScore = TIER_PRIORITY[sponsor.tier] ?? 0;
+        if (currentTierScore > existingTierScore) {
+          existing.tier = sponsor.tier;
+        }
+
+        if (!existing.logo && sponsor.logo) {
+          existing.logo = sponsor.logo;
+        }
+
+        return acc;
+      },
+      new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          company: string;
+          logo: string | null;
+          tier: string;
+          events: Array<{ id: string; title: string }>;
+        }
+      >(),
+    ),
+  ).map(([, grouped]) => ({
+    ...grouped,
+    events: Array.from(
+      new Map(grouped.events.map((event) => [event.id, event])).values(),
+    ),
+  }));
+
+  const totalSponsors = groupedSponsors.length;
+  const topTierSponsors = groupedSponsors.filter(
+    (sponsor) => sponsor.tier === "PLATINUM" || sponsor.tier === "GOLD",
+  ).length;
+  const uniqueEvents = new Set(sponsors.map((s) => s.eventId)).size;
 
   return (
     <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500 pb-10">
@@ -150,7 +212,9 @@ export default async function SponsorsPage({
         <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur shadow-sm relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Partners</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Partners
+            </CardTitle>
             <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center">
               <Building2 className="h-4 w-4 text-blue-500" />
             </div>
@@ -165,11 +229,13 @@ export default async function SponsorsPage({
             </p>
           </CardContent>
         </Card>
-        
+
         <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur shadow-sm relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Premium Sponsors</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Premium Sponsors
+            </CardTitle>
             <div className="h-8 w-8 rounded-full bg-amber-500/10 flex items-center justify-center">
               <Star className="h-4 w-4 text-amber-500" />
             </div>
@@ -188,7 +254,9 @@ export default async function SponsorsPage({
         <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur shadow-sm relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Sponsored Events</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Sponsored Events
+            </CardTitle>
             <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
               <Calendar className="h-4 w-4 text-emerald-500" />
             </div>
@@ -204,7 +272,11 @@ export default async function SponsorsPage({
 
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card/30 p-2 rounded-2xl border border-border/50 backdrop-blur-sm">
-        <form action="/sponsors" method="GET" className="relative w-full sm:w-80">
+        <form
+          action="/sponsors"
+          method="GET"
+          className="relative w-full sm:w-80"
+        >
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -215,7 +287,11 @@ export default async function SponsorsPage({
           />
         </form>
         <div className="flex items-center gap-2 w-full sm:w-auto px-2 pb-2 sm:p-0">
-          <Button variant="outline" size="sm" className="w-full sm:w-auto rounded-lg border-border/50 h-9">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto rounded-lg border-border/50 h-9"
+          >
             <FilterIcon className="mr-2 h-4 w-4" />
             Filters
           </Button>
@@ -223,25 +299,29 @@ export default async function SponsorsPage({
       </div>
 
       {/* Grid */}
-      {sponsors.length === 0 ? (
+      {groupedSponsors.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-border/60 bg-muted/20">
           <Award className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
           <h3 className="text-lg font-medium">No sponsors found</h3>
           <p className="text-sm text-muted-foreground max-w-sm mt-1">
-            {query ? "Try adjusting your search query." : "You haven't partnered with any sponsors yet. Get started by adding a sponsor."}
+            {query
+              ? "Try adjusting your search query."
+              : "You haven't partnered with any sponsors yet. Get started by adding a sponsor."}
           </p>
           {!query && (
             <Link href="/sponsors/new" className="mt-4">
-              <Button variant="secondary" className="rounded-xl">Add Sponsor</Button>
+              <Button variant="secondary" className="rounded-xl">
+                Add Sponsor
+              </Button>
             </Link>
           )}
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {sponsors.map((sponsor) => {
+          {groupedSponsors.map((sponsor) => {
             const initials = sponsor.company.substring(0, 2).toUpperCase();
             const glowClass = getTierGlow(sponsor.tier);
-            
+
             return (
               <Card
                 key={sponsor.id}
@@ -253,20 +333,30 @@ export default async function SponsorsPage({
                       ? "border-amber-500/30 hover:border-amber-400/50 hover:shadow-amber-500/10"
                       : sponsor.tier.toLowerCase() === "silver"
                         ? "border-slate-400/30 hover:border-slate-300/50 hover:shadow-slate-400/10"
-                        : "border-orange-700/30 hover:border-orange-600/50 hover:shadow-orange-700/10"
+                        : "border-orange-700/30 hover:border-orange-600/50 hover:shadow-orange-700/10",
                 )}
               >
-                <div className={cn("absolute inset-0 bg-gradient-to-br via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none", glowClass)} />
-                
+                <div
+                  className={cn(
+                    "absolute inset-0 bg-gradient-to-br via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
+                    glowClass,
+                  )}
+                />
+
                 <CardHeader className="pt-6 pb-4 relative z-10 flex flex-row items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner group-hover:scale-105 transition-transform duration-300",
-                      sponsor.tier.toLowerCase() === "platinum" ? "bg-gradient-to-br from-slate-400/20 to-slate-400/5 border-slate-400/20" :
-                      sponsor.tier.toLowerCase() === "gold" ? "bg-gradient-to-br from-amber-500/20 to-amber-500/5 border-amber-500/20" :
-                      sponsor.tier.toLowerCase() === "silver" ? "bg-gradient-to-br from-slate-500/20 to-slate-500/5 border-slate-500/20" :
-                      "bg-gradient-to-br from-orange-700/20 to-orange-700/5 border-orange-700/20"
-                    )}>
+                    <div
+                      className={cn(
+                        "h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner group-hover:scale-105 transition-transform duration-300",
+                        sponsor.tier.toLowerCase() === "platinum"
+                          ? "bg-gradient-to-br from-slate-400/20 to-slate-400/5 border-slate-400/20"
+                          : sponsor.tier.toLowerCase() === "gold"
+                            ? "bg-gradient-to-br from-amber-500/20 to-amber-500/5 border-amber-500/20"
+                            : sponsor.tier.toLowerCase() === "silver"
+                              ? "bg-gradient-to-br from-slate-500/20 to-slate-500/5 border-slate-500/20"
+                              : "bg-gradient-to-br from-orange-700/20 to-orange-700/5 border-orange-700/20",
+                      )}
+                    >
                       {sponsor.logo ? (
                         <img
                           src={sponsor.logo}
@@ -274,20 +364,28 @@ export default async function SponsorsPage({
                           className="h-full w-full rounded-2xl object-cover"
                         />
                       ) : (
-                        <span className={cn(
-                          "text-lg font-bold tracking-wider",
-                          sponsor.tier.toLowerCase() === "platinum" ? "text-slate-300" :
-                          sponsor.tier.toLowerCase() === "gold" ? "text-amber-500" :
-                          sponsor.tier.toLowerCase() === "silver" ? "text-slate-400" :
-                          "text-orange-600"
-                        )}>
+                        <span
+                          className={cn(
+                            "text-lg font-bold tracking-wider",
+                            sponsor.tier.toLowerCase() === "platinum"
+                              ? "text-slate-300"
+                              : sponsor.tier.toLowerCase() === "gold"
+                                ? "text-amber-500"
+                                : sponsor.tier.toLowerCase() === "silver"
+                                  ? "text-slate-400"
+                                  : "text-orange-600",
+                          )}
+                        >
                           {initials}
                         </span>
                       )}
                     </div>
                     <div className="space-y-1 pr-6">
                       <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors line-clamp-1">
-                        <Link href={`/sponsors/${sponsor.id}`} className="after:absolute after:inset-0">
+                        <Link
+                          href={`/sponsors/${sponsor.id}`}
+                          className="after:absolute after:inset-0"
+                        >
                           {sponsor.company}
                         </Link>
                       </CardTitle>
@@ -308,9 +406,15 @@ export default async function SponsorsPage({
                         <MoreHorizontalIcon className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 rounded-xl z-50">
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-48 rounded-xl z-50"
+                    >
                       <DropdownMenuItem>
-                        <Link href={`/sponsors/${sponsor.id}`} className="w-full cursor-pointer">
+                        <Link
+                          href={`/sponsors/${sponsor.id}`}
+                          className="w-full cursor-pointer"
+                        >
                           View Sponsor
                         </Link>
                       </DropdownMenuItem>
@@ -324,8 +428,14 @@ export default async function SponsorsPage({
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">
-                        <form action={deleteSponsor.bind(null, sponsor.id)} className="w-full">
-                          <button type="submit" className="w-full text-left cursor-pointer">
+                        <form
+                          action={deleteSponsor.bind(null, sponsor.id)}
+                          className="w-full"
+                        >
+                          <button
+                            type="submit"
+                            className="w-full text-left cursor-pointer"
+                          >
                             Remove Sponsor
                           </button>
                         </form>
@@ -335,24 +445,26 @@ export default async function SponsorsPage({
                 </CardHeader>
 
                 <div className="px-6 py-2 flex-col gap-2 relative z-10 hidden">
-                    {/* Extra space if needed for future fields */}
+                  {/* Extra space if needed for future fields */}
                 </div>
 
                 <div className="mt-auto p-4 border-t border-border/30 bg-muted/5 flex justify-between items-center relative z-10">
-                  <div className={cn(
-                    "flex items-center gap-1.5 px-3 py-1 rounded-lg border",
-                    getTierColor(sponsor.tier)
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg border",
+                      getTierColor(sponsor.tier),
+                    )}
+                  >
                     {getTierIcon(sponsor.tier)}
                     <span className="text-[10px] font-bold uppercase tracking-wider">
                       {sponsor.tier}
                     </span>
                   </div>
-                  
-                  <div className="flex items-center gap-2 max-w-[50%]">
+
+                  <div className="flex items-center gap-2 max-w-[65%]">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-xs font-medium text-muted-foreground truncate group-hover:text-foreground transition-colors">
-                      {sponsor.event.title}
+                      {sponsor.events.map((event) => event.title).join(", ")}
                     </span>
                   </div>
                 </div>
@@ -364,4 +476,3 @@ export default async function SponsorsPage({
     </div>
   );
 }
-

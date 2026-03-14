@@ -24,6 +24,10 @@ export async function GET(request: Request) {
       url.searchParams.get("ticket")?.toLowerCase() === "true";
     const includeEvents =
       url.searchParams.get("event")?.toLowerCase() === "true";
+    const includeSpeakers =
+      url.searchParams.get("speaker")?.toLowerCase() === "true";
+    const includeSessions =
+      url.searchParams.get("withsession")?.toLowerCase() === "true";
 
     if (!token) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -73,7 +77,10 @@ export async function GET(request: Request) {
         })
       : null;
 
-    const events = includeEvents
+    const shouldLoadEventSessions =
+      includeEvents && (includeSpeakers || includeSessions);
+
+    const rawEvents = includeEvents
       ? await prisma.event.findMany({
           where: {
             OR: [
@@ -89,8 +96,82 @@ export async function GET(request: Request) {
             location: true,
             status: true,
             organiserId: true,
+            ...(shouldLoadEventSessions
+              ? {
+                  sessions: {
+                    select: {
+                      id: true,
+                      title: true,
+                      description: true,
+                      start: true,
+                      end: true,
+                      ...(includeSessions
+                        ? {
+                            room: {
+                              select: {
+                                id: true,
+                                name: true,
+                                capacity: true,
+                              },
+                            },
+                          }
+                        : {}),
+                      ...(includeSpeakers
+                        ? {
+                            speaker: {
+                              select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                avatar: true,
+                                bio: true,
+                                topic: true,
+                                company: true,
+                              },
+                            },
+                          }
+                        : {}),
+                    },
+                    orderBy: { start: "asc" },
+                  },
+                }
+              : {}),
           },
           orderBy: { dateStart: "desc" },
+        })
+      : null;
+
+    const events = rawEvents
+      ? rawEvents.map((event: any) => {
+          const eventPayload: Record<string, unknown> = {
+            id: event.id,
+            title: event.title,
+            dateStart: event.dateStart,
+            dateEnd: event.dateEnd,
+            location: event.location,
+            status: event.status,
+            organiserId: event.organiserId,
+          };
+
+          const sessions = Array.isArray(event.sessions) ? event.sessions : [];
+
+          if (includeSessions) {
+            eventPayload.sessions = sessions;
+          }
+
+          if (includeSpeakers) {
+            const speakersById = new Map<string, any>();
+
+            for (const session of sessions) {
+              if (session.speaker && !speakersById.has(session.speaker.id)) {
+                speakersById.set(session.speaker.id, session.speaker);
+              }
+            }
+
+            eventPayload.speakers = Array.from(speakersById.values());
+          }
+
+          return eventPayload;
         })
       : null;
 

@@ -52,6 +52,10 @@ export async function GET(request: Request) {
     const location = searchParams.get("location")?.trim() ?? "";
     const category = searchParams.get("category")?.trim() ?? "";
     const companyId = searchParams.get("companyId")?.trim() ?? "";
+    const withSpeaker =
+      searchParams.get("speaker")?.trim().toLowerCase() === "true";
+    const withSession =
+      searchParams.get("withsession")?.trim().toLowerCase() === "true";
     const from = toDate(searchParams.get("from"));
     const to = toDate(searchParams.get("to"));
     const page = toPositiveInt(searchParams.get("page"), 1);
@@ -97,35 +101,118 @@ export async function GET(request: Request) {
       };
     }
 
-    const [total, events] = await Promise.all([
-      prisma.event.count({ where }),
-      prisma.event.findMany({
-        where,
+    const shouldLoadSessions = withSpeaker || withSession;
+
+    const eventSelect: Prisma.EventSelect = {
+      id: true,
+      title: true,
+      description: true,
+      location: true,
+      status: true,
+      category: true,
+      dateStart: true,
+      dateEnd: true,
+      banner: true,
+      attendeesCount: true,
+      ticketsSold: true,
+      price: true,
+      company: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    };
+
+    if (shouldLoadSessions) {
+      (eventSelect as any).sessions = {
         select: {
           id: true,
           title: true,
           description: true,
-          location: true,
-          status: true,
-          category: true,
-          dateStart: true,
-          dateEnd: true,
-          banner: true,
-          attendeesCount: true,
-          ticketsSold: true,
-          price: true,
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
+          start: true,
+          end: true,
+          ...(withSession
+            ? {
+                room: {
+                  select: {
+                    id: true,
+                    name: true,
+                    capacity: true,
+                  },
+                },
+              }
+            : {}),
+          ...(withSpeaker
+            ? {
+                speaker: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    avatar: true,
+                    bio: true,
+                    topic: true,
+                    company: true,
+                  },
+                },
+              }
+            : {}),
         },
+        orderBy: {
+          start: "asc",
+        },
+      };
+    }
+
+    const [total, rawEvents] = await Promise.all([
+      prisma.event.count({ where }),
+      prisma.event.findMany({
+        where,
+        select: eventSelect,
         orderBy: { dateStart: "asc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
     ]);
+
+    const events = rawEvents.map((event: any) => {
+      const sessions = Array.isArray(event.sessions) ? event.sessions : [];
+
+      const nextEvent: Record<string, unknown> = {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        status: event.status,
+        category: event.category,
+        dateStart: event.dateStart,
+        dateEnd: event.dateEnd,
+        banner: event.banner,
+        attendeesCount: event.attendeesCount,
+        ticketsSold: event.ticketsSold,
+        price: event.price,
+        company: event.company,
+      };
+
+      if (withSession) {
+        nextEvent.sessions = sessions;
+      }
+
+      if (withSpeaker) {
+        const speakersById = new Map<string, any>();
+
+        for (const session of sessions) {
+          if (session.speaker && !speakersById.has(session.speaker.id)) {
+            speakersById.set(session.speaker.id, session.speaker);
+          }
+        }
+
+        nextEvent.speakers = Array.from(speakersById.values());
+      }
+
+      return nextEvent;
+    });
 
     return NextResponse.json({
       success: true,
@@ -139,6 +226,8 @@ export async function GET(request: Request) {
         location: location || null,
         category: category || null,
         companyId: companyId || null,
+        speaker: withSpeaker,
+        withsession: withSession,
         from: from?.toISOString() ?? null,
         to: to?.toISOString() ?? null,
       },

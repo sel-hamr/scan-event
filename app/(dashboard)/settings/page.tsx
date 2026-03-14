@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Card,
   CardContent,
@@ -17,11 +17,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useSidebarStore } from "@/stores";
-
-const DEFAULT_APPEARANCE_PREFS = {
-  darkMode: true,
-  autoCollapseSidebar: true,
-};
+import { UploadCloudIcon, XCircleIcon } from "lucide-react";
+import {
+  DEFAULT_APPEARANCE_PREFS,
+  getAppearancePrefsFromCookie,
+  setAppearancePrefsCookie,
+} from "@/lib/appearance-cookie";
 
 export default function SettingsPage() {
   const { setCollapsed } = useSidebarStore();
@@ -39,6 +40,7 @@ export default function SettingsPage() {
     avatar: "",
     bio: "",
   });
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [notificationPrefs, setNotificationPrefs] = useState({
@@ -56,6 +58,15 @@ export default function SettingsPage() {
   const [preferencesLoading, setPreferencesLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleAvatarUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setProfileForm((prev) => ({ ...prev, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -84,24 +95,7 @@ export default function SettingsPage() {
       }
     }
 
-    const storedAppearance = localStorage.getItem("settings:appearance");
-    if (storedAppearance) {
-      try {
-        const parsed = JSON.parse(storedAppearance);
-        setAppearancePrefs({
-          darkMode:
-            typeof parsed.darkMode === "boolean"
-              ? parsed.darkMode
-              : DEFAULT_APPEARANCE_PREFS.darkMode,
-          autoCollapseSidebar:
-            typeof parsed.autoCollapseSidebar === "boolean"
-              ? parsed.autoCollapseSidebar
-              : DEFAULT_APPEARANCE_PREFS.autoCollapseSidebar,
-        });
-      } catch {
-        localStorage.removeItem("settings:appearance");
-      }
-    }
+    setAppearancePrefs(getAppearancePrefsFromCookie());
 
     setAppearanceLoaded(true);
   }, []);
@@ -185,10 +179,7 @@ export default function SettingsPage() {
         "settings:notifications",
         JSON.stringify(notificationPrefs),
       );
-      localStorage.setItem(
-        "settings:appearance",
-        JSON.stringify(appearancePrefs),
-      );
+      setAppearancePrefsCookie(appearancePrefs);
 
       document.documentElement.classList.toggle(
         "dark",
@@ -280,7 +271,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-6 pt-6 flex flex-col sm:flex-row gap-8">
               <div className="flex flex-col items-center gap-4 w-full sm:w-1/3 p-6 border border-border/50 rounded-xl bg-background shadow-inner">
                 <Avatar className="h-28 w-28 ring-4 ring-background shadow-xl">
-                  <AvatarImage src={user.avatar} />
+                  <AvatarImage src={profileForm.avatar || user.avatar} />
                   <AvatarFallback className="bg-primary/10 text-primary text-3xl font-bold">
                     {initials}
                   </AvatarFallback>
@@ -290,17 +281,6 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground capitalize">
                     {user.role.replace("_", " ")}
                   </p>
-                </div>
-                <div className="flex gap-2 w-full mt-2">
-                  <Button variant="outline" className="w-full rounded-xl">
-                    Change
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    className="rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
-                  >
-                    Remove
-                  </Button>
                 </div>
               </div>
 
@@ -348,19 +328,68 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input
-                    id="avatar"
-                    value={profileForm.avatar}
-                    onChange={(e) =>
-                      setProfileForm((prev) => ({
-                        ...prev,
-                        avatar: e.target.value,
-                      }))
-                    }
-                    placeholder="https://..."
-                    className="rounded-xl bg-background"
+                  <Label>Avatar</Label>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAvatarUpload(file);
+                    }}
                   />
+                  {profileForm.avatar ? (
+                    <div className="relative w-full overflow-hidden rounded-xl border border-border/50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={profileForm.avatar}
+                        alt="Avatar preview"
+                        className="h-40 w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setProfileForm((prev) => ({ ...prev, avatar: "" }))
+                        }
+                        className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-destructive shadow-sm backdrop-blur hover:bg-background"
+                        aria-label="Remove image"
+                      >
+                        <XCircleIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="absolute bottom-2 right-2 rounded-lg bg-background/80 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur hover:bg-background"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files?.[0];
+                        if (file && file.type.startsWith("image/")) {
+                          handleAvatarUpload(file);
+                        }
+                      }}
+                      className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20 px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/40"
+                    >
+                      <UploadCloudIcon className="h-10 w-10 text-muted-foreground" />
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Click to upload or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PNG, JPG, GIF, WEBP up to any size
+                        </p>
+                      </div>
+                    </button>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>

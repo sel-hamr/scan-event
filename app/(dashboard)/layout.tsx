@@ -5,11 +5,10 @@ import { useSidebarStore } from "@/stores";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_APPEARANCE_PREFS = {
-  darkMode: true,
-  autoCollapseSidebar: true,
-};
+import {
+  APPEARANCE_CHANGE_EVENT,
+  getAppearancePrefsFromCookie,
+} from "@/lib/appearance-cookie";
 
 export default function DashboardLayout({
   children,
@@ -19,31 +18,8 @@ export default function DashboardLayout({
   const { isCollapsed, setCollapsed } = useSidebarStore();
 
   useEffect(() => {
-    const readAppearancePrefs = () => {
-      if (typeof window === "undefined") return DEFAULT_APPEARANCE_PREFS;
-
-      const raw = window.localStorage.getItem("settings:appearance");
-      if (!raw) return DEFAULT_APPEARANCE_PREFS;
-
-      try {
-        const parsed = JSON.parse(raw);
-        return {
-          darkMode:
-            typeof parsed.darkMode === "boolean"
-              ? parsed.darkMode
-              : DEFAULT_APPEARANCE_PREFS.darkMode,
-          autoCollapseSidebar:
-            typeof parsed.autoCollapseSidebar === "boolean"
-              ? parsed.autoCollapseSidebar
-              : DEFAULT_APPEARANCE_PREFS.autoCollapseSidebar,
-        };
-      } catch {
-        return DEFAULT_APPEARANCE_PREFS;
-      }
-    };
-
     const applyAppearance = () => {
-      const prefs = readAppearancePrefs();
+      const prefs = getAppearancePrefsFromCookie();
       document.documentElement.classList.toggle("dark", prefs.darkMode);
 
       if (prefs.autoCollapseSidebar) {
@@ -53,24 +29,18 @@ export default function DashboardLayout({
 
     applyAppearance();
 
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === "settings:appearance") {
-        applyAppearance();
-      }
-    };
-
     const handleResize = () => {
-      const prefs = readAppearancePrefs();
+      const prefs = getAppearancePrefsFromCookie();
       if (prefs.autoCollapseSidebar) {
         setCollapsed(window.innerWidth < 768);
       }
     };
 
-    window.addEventListener("storage", handleStorage);
+    window.addEventListener(APPEARANCE_CHANGE_EVENT, applyAppearance);
     window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(APPEARANCE_CHANGE_EVENT, applyAppearance);
       window.removeEventListener("resize", handleResize);
     };
   }, [setCollapsed]);

@@ -4,9 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useNotificationStore } from "@/stores";
-import { Bell, Search, Moon, Sun } from "lucide-react";
+import { Bell, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,12 +23,17 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import React from "react";
+import {
+  getAppearancePrefsFromCookie,
+  setDarkModeCookie,
+} from "@/lib/appearance-cookie";
 
 type HeaderUser = {
   id: string;
   name: string;
   email: string;
   role: string;
+  avatar?: string | null;
 };
 
 const routeLabels: Record<string, string> = {
@@ -50,8 +55,11 @@ export function AppHeader() {
   const router = useRouter();
   const { isCollapsed } = useSidebarStore();
   const { unreadCount, setUnreadCount } = useNotificationStore();
-  const [isDark, setIsDark] = React.useState(true);
+  const [isDark, setIsDark] = React.useState(
+    () => getAppearancePrefsFromCookie().darkMode,
+  );
   const [currentUser, setCurrentUser] = React.useState<HeaderUser | null>(null);
+  const [userLoaded, setUserLoaded] = React.useState(false);
   const [loggingOut, setLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
@@ -68,6 +76,7 @@ export function AppHeader() {
           if (active) {
             setCurrentUser(null);
             setUnreadCount(0);
+            setUserLoaded(true);
           }
           return;
         }
@@ -83,11 +92,13 @@ export function AppHeader() {
         if (active) {
           setCurrentUser(data.user ?? null);
           setUnreadCount(Number.isNaN(nextUnreadCount) ? 0 : nextUnreadCount);
+          setUserLoaded(true);
         }
       } catch {
         if (active) {
           setCurrentUser(null);
           setUnreadCount(0);
+          setUserLoaded(true);
         }
       }
     };
@@ -110,14 +121,10 @@ export function AppHeader() {
   ];
 
   const handleThemeToggle = () => {
-    const html = document.documentElement;
-    if (html.classList.contains("dark")) {
-      html.classList.remove("dark");
-      setIsDark(false);
-    } else {
-      html.classList.add("dark");
-      setIsDark(true);
-    }
+    const nextDarkMode = !isDark;
+    document.documentElement.classList.toggle("dark", nextDarkMode);
+    setIsDark(nextDarkMode);
+    setDarkModeCookie(nextDarkMode);
   };
 
   const handleLogout = async () => {
@@ -135,15 +142,20 @@ export function AppHeader() {
     router.push("/settings");
   };
 
-  const displayName = currentUser?.name ?? "User";
+  const displayName = currentUser?.name ?? "";
   const displayEmail = currentUser?.email ?? "";
-  const displayRole = (currentUser?.role ?? "participant").replace("_", " ");
+  const displayRole = currentUser?.role
+    ? currentUser.role.replace("_", " ")
+    : "";
+  const displayAvatar = currentUser?.avatar ?? undefined;
 
   const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+    ? displayName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+    : "U";
 
   return (
     <header
@@ -181,15 +193,6 @@ export function AppHeader() {
 
       {/* Right side actions */}
       <div className="flex items-center gap-2">
-        {/* Search */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="rounded-xl text-muted-foreground hover:text-foreground"
-        >
-          <Search className="h-4.5 w-4.5" />
-        </Button>
-
         {/* Theme toggle */}
         <Button
           variant="ghost"
@@ -228,25 +231,40 @@ export function AppHeader() {
               className="ml-1 flex items-center gap-2 rounded-xl px-2"
             >
               <Avatar className="h-8 w-8">
+                <AvatarImage src={displayAvatar} alt={displayName} />
                 <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="hidden flex-col items-start md:flex">
-                <span className="text-sm font-medium text-foreground">
-                  {displayName}
-                </span>
-                <span className="text-[11px] text-muted-foreground capitalize">
-                  {displayRole}
-                </span>
-              </div>
+              {userLoaded ? (
+                <div className="hidden flex-col items-start md:flex">
+                  <span className="text-sm font-medium text-foreground">
+                    {displayName || "User"}
+                  </span>
+                  {displayRole ? (
+                    <span className="text-[11px] text-muted-foreground capitalize">
+                      {displayRole}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
             <div className="px-1.5 py-1">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{displayName}</p>
-                <p className="text-xs text-muted-foreground">{displayEmail}</p>
+                {userLoaded ? (
+                  <>
+                    <p className="text-sm font-medium">
+                      {displayName || "User"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {displayEmail}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                )}
               </div>
             </div>
             <DropdownMenuSeparator />

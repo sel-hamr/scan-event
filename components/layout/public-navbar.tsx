@@ -6,21 +6,15 @@ import { Moon, Sun } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LogoIcon } from "@/components/icons/logo";
+import {
+  getAppearancePrefsFromCookie,
+  setDarkModeCookie,
+} from "@/lib/appearance-cookie";
 
 export function PublicNavbar() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === "undefined") return true;
-
-    const raw = window.localStorage.getItem("settings:appearance");
-    if (!raw) return true;
-
-    try {
-      const parsed = JSON.parse(raw) as { darkMode?: boolean };
-      return typeof parsed.darkMode === "boolean" ? parsed.darkMode : true;
-    } catch {
-      return true;
-    }
-  });
+  const [isDark, setIsDark] = useState(
+    () => getAppearancePrefsFromCookie().darkMode,
+  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -30,22 +24,7 @@ export function PublicNavbar() {
     const nextDarkMode = !isDark;
     setIsDark(nextDarkMode);
     document.documentElement.classList.toggle("dark", nextDarkMode);
-
-    const raw = window.localStorage.getItem("settings:appearance");
-    let parsed: Record<string, unknown> = {};
-
-    if (raw) {
-      try {
-        parsed = JSON.parse(raw) as Record<string, unknown>;
-      } catch {
-        parsed = {};
-      }
-    }
-
-    window.localStorage.setItem(
-      "settings:appearance",
-      JSON.stringify({ ...parsed, darkMode: nextDarkMode }),
-    );
+    setDarkModeCookie(nextDarkMode);
   };
 
   return (

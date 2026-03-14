@@ -380,7 +380,7 @@ export function EditEventDrawer({
                     Click to upload or drag and drop
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    PNG, JPG, GIF, WEBP up to any size (stored as base64)
+                    PNG, JPG, GIF, WEBP up to any size
                   </p>
                 </div>
               </button>

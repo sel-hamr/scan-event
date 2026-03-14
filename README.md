@@ -406,6 +406,7 @@ The `/api/v2/*` endpoints provide a **stateless, JSON-only** interface for exter
 | `/api/v2/me`          | GET / PATCH | Bearer           | Profile info (with `?ticket=true` or `?event=true`) |
 | `/api/v2/events`      | GET         | Bearer           | Paginated, filterable event list                    |
 | `/api/v2/tickets`     | GET         | Bearer           | User's tickets with filters                         |
+| `/api/v2/tickets/buy` | POST        | Bearer           | Buy a ticket for an event                           |
 | `/api/v2/scan-ticket` | POST        | Bearer (SCANNER) | Validate a ticket QR code                           |
 
 > See [`API_README.md`](./API_README.md) for full request/response examples.

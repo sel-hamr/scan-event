@@ -180,19 +180,28 @@ export default async function TicketDetailsPage({
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className={cn("w-2 h-2 rounded-full animate-pulse", getStatusDot(ticket.status))} />
+            <div
+              className={cn(
+                "w-2 h-2 rounded-full animate-pulse",
+                getStatusDot(ticket.status),
+              )}
+            />
             <h1 className="text-3xl font-bold tracking-tight">
               {ticket.event.title}
             </h1>
             <Badge
               variant="outline"
-              className={cn("text-[10px] uppercase font-bold tracking-wider px-2.5 py-1", getStatusVariant(ticket.status))}
+              className={cn(
+                "text-[10px] uppercase font-bold tracking-wider px-2.5 py-1",
+                getStatusVariant(ticket.status),
+              )}
             >
               {ticket.status}
             </Badge>
           </div>
           <p className="text-muted-foreground text-sm max-w-lg">
-            Full ticket details, attendee information, and the QR code for venue check-in.
+            Full ticket details, attendee information, and the QR code for venue
+            check-in.
           </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -206,17 +215,28 @@ export default async function TicketDetailsPage({
       </div>
 
       {/* Main ticket card */}
-      <div className="max-w-5xl w-full">
+      <div className="max-w-5xl w-full mx-auto">
         <div
           className={cn(
             "relative flex flex-col lg:flex-row rounded-3xl overflow-hidden border border-border/50 shadow-2xl bg-card",
           )}
         >
           {/* Gradient accent overlay */}
-          <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", accentGradient)} />
+          <div
+            className={cn(
+              "absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none",
+              accentGradient,
+            )}
+          />
 
           {/* Accent bar on top */}
-          <div className={cn("absolute top-0 left-0 right-0 h-1 lg:h-full lg:w-1 lg:right-auto", accentBar, "opacity-80")} />
+          <div
+            className={cn(
+              "absolute top-0 left-0 right-0 h-1 lg:h-full lg:w-1 lg:right-auto",
+              accentBar,
+              "opacity-80",
+            )}
+          />
 
           {/* Subtle texture/shimmer overlay */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.04)_0%,_transparent_60%)] pointer-events-none" />
@@ -253,7 +273,10 @@ export default async function TicketDetailsPage({
                 <MapPin className="h-3.5 w-3.5 shrink-0" />
                 <span>{ticket.event.location}</span>
                 <span className="mx-1 text-border">•</span>
-                <Badge variant="outline" className="uppercase text-[9px] font-bold tracking-wider">
+                <Badge
+                  variant="outline"
+                  className="uppercase text-[9px] font-bold tracking-wider"
+                >
                   {ticket.event.status}
                 </Badge>
               </div>
@@ -261,7 +284,13 @@ export default async function TicketDetailsPage({
 
             {/* Attendee card */}
             <div className="p-5 rounded-2xl bg-background/50 border border-border/40 backdrop-blur-sm flex items-center gap-4">
-              <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", accentBar, "bg-opacity-15")}>
+              <div
+                className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                  accentBar,
+                  "bg-opacity-15",
+                )}
+              >
                 <User className="h-4 w-4 text-muted-foreground" />
               </div>
               {ticket.user ? (
@@ -308,14 +337,18 @@ export default async function TicketDetailsPage({
                   <CalendarDays className="h-3 w-3" />
                   Date & Time
                 </p>
-                <p className="font-semibold text-sm">{formatDateTime(ticket.event.dateStart)}</p>
+                <p className="font-semibold text-sm">
+                  {formatDateTime(ticket.event.dateStart)}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <p className="text-[9px] uppercase text-muted-foreground font-bold tracking-widest flex items-center gap-1.5">
                   <Clock className="h-3 w-3" />
                   Event Ends
                 </p>
-                <p className="font-semibold text-sm">{formatDateTime(ticket.event.dateEnd)}</p>
+                <p className="font-semibold text-sm">
+                  {formatDateTime(ticket.event.dateEnd)}
+                </p>
               </div>
               <div className="space-y-1.5">
                 <p className="text-[9px] uppercase text-muted-foreground font-bold tracking-widest flex items-center gap-1.5">
@@ -338,12 +371,16 @@ export default async function TicketDetailsPage({
                 {isScanned ? (
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <p className="font-semibold text-sm text-emerald-400">Checked in</p>
+                    <p className="font-semibold text-sm text-emerald-400">
+                      Checked in
+                    </p>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                    <p className="font-semibold text-sm text-muted-foreground">Not scanned</p>
+                    <p className="font-semibold text-sm text-muted-foreground">
+                      Not scanned
+                    </p>
                   </div>
                 )}
               </div>
@@ -354,10 +391,14 @@ export default async function TicketDetailsPage({
               <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 flex items-center gap-3">
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
                 <div>
-                  <p className="text-xs font-medium text-emerald-400">Ticket successfully scanned</p>
+                  <p className="text-xs font-medium text-emerald-400">
+                    Ticket successfully scanned
+                  </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {formatDateTime(activeQrCode.scannedAt)}
-                    {activeQrCode.scannedBy ? ` · by ${activeQrCode.scannedBy}` : ""}
+                    {activeQrCode.scannedBy
+                      ? ` · by ${activeQrCode.scannedBy}`
+                      : ""}
                   </p>
                 </div>
               </div>
@@ -381,17 +422,29 @@ export default async function TicketDetailsPage({
               <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground mb-1">
                 Entry QR Code
               </p>
-              <p className="text-[10px] text-muted-foreground/60">Scan at venue entrance</p>
+              <p className="text-[10px] text-muted-foreground/60">
+                Scan at venue entrance
+              </p>
             </div>
 
             {/* QR Code display */}
             <div className="relative group">
               {/* Glow effect */}
-              <div className={cn("absolute -inset-2 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500", accentBar, "bg-opacity-20")} />
-              <div className={cn(
-                "relative bg-white p-5 rounded-2xl shadow-lg border-2 transition-all duration-300",
-                isScanned ? "border-emerald-400/50" : "border-border/20 group-hover:border-border/40",
-              )}>
+              <div
+                className={cn(
+                  "absolute -inset-2 rounded-3xl opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500",
+                  accentBar,
+                  "bg-opacity-20",
+                )}
+              />
+              <div
+                className={cn(
+                  "relative bg-white p-5 rounded-2xl shadow-lg border-2 transition-all duration-300",
+                  isScanned
+                    ? "border-emerald-400/50"
+                    : "border-border/20 group-hover:border-border/40",
+                )}
+              >
                 <img
                   src={qrImage}
                   alt={`QR code for ticket ${ticket.id}`}
@@ -401,7 +454,9 @@ export default async function TicketDetailsPage({
                   <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl flex items-center justify-center">
                     <div className="bg-white/90 backdrop-blur rounded-xl px-3 py-1.5 flex items-center gap-1.5 shadow-sm">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Used</span>
+                      <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                        Used
+                      </span>
                     </div>
                   </div>
                 )}
