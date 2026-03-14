@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { EventStatus } from "@prisma/client";
-import { cookies } from "next/headers";
+import { EventStatus, NotificationType } from "@prisma/client";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function GET() {
   try {
@@ -32,14 +32,15 @@ export async function POST(req: Request) {
       location,
       companyId,
       description,
+      banner,
       sessions,
       tickets,
       sponsorIds,
       exposantIds,
     } = data;
 
-    const cookieStore = await cookies();
-    const currentUserId = cookieStore.get("userId")?.value;
+    const auth = await getAuthFromCookieStore();
+    const currentUserId = auth?.userId;
 
     const user = currentUserId
       ? await prisma.user.findUnique({
@@ -95,11 +96,19 @@ export async function POST(req: Request) {
         : EventStatus.DRAFT;
 
     const normalizedSponsorIds = Array.isArray(sponsorIds)
-      ? sponsorIds.filter((id): id is string => typeof id === "string")
+      ? Array.from(
+          new Set(
+            sponsorIds.filter((id): id is string => typeof id === "string"),
+          ),
+        )
       : [];
 
     const normalizedExposantIds = Array.isArray(exposantIds)
-      ? exposantIds.filter((id): id is string => typeof id === "string")
+      ? Array.from(
+          new Set(
+            exposantIds.filter((id): id is string => typeof id === "string"),
+          ),
+        )
       : [];
 
     const totalCapacity = tickets
@@ -120,6 +129,9 @@ export async function POST(req: Request) {
         companyId: normalizedCompanyId,
         organiserId: user.id,
         attendeesCount: totalCapacity,
+        ...(typeof banner === "string" && banner.startsWith("data:image/")
+          ? { banner }
+          : {}),
         rooms: {
           create: [
             {
@@ -222,6 +234,15 @@ export async function POST(req: Request) {
         });
       }
     }
+
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        title: "Event created",
+        body: `Your event \"${event.title}\" was created successfully.`,
+        type: NotificationType.SUCCESS,
+      },
+    });
 
     return NextResponse.json(event);
   } catch (error) {

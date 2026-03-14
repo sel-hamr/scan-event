@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -23,9 +22,12 @@ import {
   Loader2Icon,
   CalendarIcon,
   Clock3Icon,
+  UploadCloudIcon,
+  XCircleIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -46,6 +48,7 @@ const STEPS = [
   { id: 1, name: "Event Details", description: "Basic info" },
   { id: 2, name: "Sessions", description: "Schedule & speakers" },
   { id: 3, name: "Tickets", description: "Pricing & capacity" },
+  { id: 4, name: "Sponsors & Exposants", description: "Partners & stands" },
 ];
 
 const TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
@@ -102,7 +105,18 @@ export default function CreateEventPage() {
     location: "",
     companyId: "",
     description: "",
+    banner: "",
   });
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setEventDetails((prev) => ({ ...prev, banner: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [sessions, setSessions] = useState<
     {
@@ -203,7 +217,7 @@ export default function CreateEventPage() {
         : eventDetails.companyId;
 
     if (!effectiveCompanyId) {
-      alert("Please select a company before publishing the event.");
+      toast.error("Please select a company before publishing the event.");
       return;
     }
 
@@ -217,6 +231,7 @@ export default function CreateEventPage() {
         body: JSON.stringify({
           ...eventDetails,
           companyId: effectiveCompanyId,
+          banner: eventDetails.banner || undefined,
           sessions,
           tickets,
           sponsorIds: selectedSponsorIds,
@@ -230,14 +245,15 @@ export default function CreateEventPage() {
         throw new Error(result?.error || "Failed to create event");
       }
 
+      toast.success("Event created successfully.");
       router.push("/events");
       router.refresh();
     } catch (error) {
       console.error("Error creating event:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to create event. Please try again.",
+          : "Something went wrong. Please try again.",
       );
     } finally {
       setIsLoading(false);
@@ -476,7 +492,17 @@ export default function CreateEventPage() {
                       }
                     >
                       <SelectTrigger className="rounded-xl w-full" id="company">
-                        <SelectValue placeholder="Select a company" />
+                        {eventDetails.companyId ? (
+                          <span className="flex flex-1 text-left text-sm">
+                            {companies.find(
+                              (c) => c.id === eventDetails.companyId,
+                            )?.name ?? eventDetails.companyId}
+                          </span>
+                        ) : (
+                          <span className="flex flex-1 text-left text-sm text-muted-foreground">
+                            Select a company
+                          </span>
+                        )}
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
                         {companies.map((company) => (
@@ -486,16 +512,6 @@ export default function CreateEventPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    {eventDetails.companyId ? (
-                      <p className="text-xs text-muted-foreground">
-                        Selected company:{" "}
-                        <span className="font-medium text-foreground">
-                          {companies.find(
-                            (company) => company.id === eventDetails.companyId,
-                          )?.name ?? "Unknown company"}
-                        </span>
-                      </p>
-                    ) : null}
                   </div>
                 )}
               </div>
@@ -515,74 +531,69 @@ export default function CreateEventPage() {
                 />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label>Assign Sponsors from Database</Label>
-                  <div className="max-h-48 space-y-2 overflow-auto rounded-xl border border-border/50 bg-background/30 p-3">
-                    {sponsors.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No sponsors available.
-                      </p>
-                    ) : (
-                      sponsors.map((sponsor) => (
-                        <label
-                          key={sponsor.id}
-                          className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted/50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedSponsorIds.includes(sponsor.id)}
-                            onChange={() => toggleSponsorSelection(sponsor.id)}
-                            className="mt-1"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium leading-none">
-                              {sponsor.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {sponsor.company} • {sponsor.tier}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    )}
+              {/* Avatar / Banner upload */}
+              <div className="grid gap-2">
+                <Label>Event Avatar / Banner</Label>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleAvatarUpload(file);
+                  }}
+                />
+                {eventDetails.banner ? (
+                  <div className="relative w-full overflow-hidden rounded-xl border border-border/50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={eventDetails.banner}
+                      alt="Event avatar preview"
+                      className="h-48 w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEventDetails((prev) => ({ ...prev, banner: "" }))
+                      }
+                      className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-destructive shadow-sm backdrop-blur hover:bg-background"
+                      aria-label="Remove image"
+                    >
+                      <XCircleIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 rounded-lg bg-background/80 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur hover:bg-background"
+                    >
+                      Change
+                    </button>
                   </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>Assign Exposants from Database</Label>
-                  <div className="max-h-48 space-y-2 overflow-auto rounded-xl border border-border/50 bg-background/30 p-3">
-                    {exposants.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No exposants available.
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith("image/"))
+                        handleAvatarUpload(file);
+                    }}
+                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20 px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/40"
+                  >
+                    <UploadCloudIcon className="h-10 w-10 text-muted-foreground" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">
+                        Click to upload or drag and drop
                       </p>
-                    ) : (
-                      exposants.map((exposant) => (
-                        <label
-                          key={exposant.id}
-                          className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted/50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedExposantIds.includes(exposant.id)}
-                            onChange={() =>
-                              toggleExposantSelection(exposant.id)
-                            }
-                            className="mt-1"
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium leading-none">
-                              {exposant.company}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {exposant.name} • Stand {exposant.standNumber}
-                            </p>
-                          </div>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPG, GIF, WEBP up to any size (stored as base64)
+                      </p>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -644,7 +655,17 @@ export default function CreateEventPage() {
                               }
                             >
                               <SelectTrigger className="rounded-xl w-full">
-                                <SelectValue placeholder="Select a speaker" />
+                                {session.speaker ? (
+                                  <span className="flex flex-1 text-left text-sm">
+                                    {speakers.find(
+                                      (s) => s.id === session.speaker,
+                                    )?.name ?? session.speaker}
+                                  </span>
+                                ) : (
+                                  <span className="flex flex-1 text-left text-sm text-muted-foreground">
+                                    Select a speaker
+                                  </span>
+                                )}
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
                                 {speakers.map((speaker) => (
@@ -657,16 +678,6 @@ export default function CreateEventPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            {session.speaker ? (
-                              <p className="text-xs text-muted-foreground">
-                                Selected speaker:{" "}
-                                <span className="font-medium text-foreground">
-                                  {speakers.find(
-                                    (speaker) => speaker.id === session.speaker,
-                                  )?.name ?? "Unknown speaker"}
-                                </span>
-                              </p>
-                            ) : null}
                           </div>
                         </div>
                         <div className="grid gap-2">
@@ -723,6 +734,149 @@ export default function CreateEventPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Step 4: Sponsors & Exposants */}
+          {currentStep === 4 && (
+            <div className="grid gap-8 animate-in slide-in-from-right-4 duration-300">
+              {/* Sponsors */}
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Sponsors</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSponsorIds.length} selected
+                    </p>
+                  </div>
+                  {selectedSponsorIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSponsorIds([])}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {sponsors.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 py-10 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No sponsors available.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {sponsors.map((sponsor) => {
+                      const selected = selectedSponsorIds.includes(sponsor.id);
+                      return (
+                        <button
+                          key={sponsor.id}
+                          type="button"
+                          onClick={() => toggleSponsorSelection(sponsor.id)}
+                          className={cn(
+                            "relative flex flex-col gap-2 rounded-xl border-2 p-4 text-left transition-all",
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border/50 bg-background/30 hover:border-border hover:bg-muted/30",
+                          )}
+                        >
+                          {selected && (
+                            <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                              <CheckCircle2Icon className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-sm font-bold text-muted-foreground">
+                            {sponsor.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 pr-6">
+                            <p className="truncate text-sm font-semibold leading-tight">
+                              {sponsor.name}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {sponsor.company}
+                            </p>
+                            <span className="mt-1.5 inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">
+                              {sponsor.tier}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border/50" />
+
+              {/* Exposants */}
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold">Exposants</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedExposantIds.length} selected
+                    </p>
+                  </div>
+                  {selectedExposantIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedExposantIds([])}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {exposants.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 py-10 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No exposants available.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {exposants.map((exposant) => {
+                      const selected = selectedExposantIds.includes(
+                        exposant.id,
+                      );
+                      return (
+                        <button
+                          key={exposant.id}
+                          type="button"
+                          onClick={() => toggleExposantSelection(exposant.id)}
+                          className={cn(
+                            "relative flex flex-col gap-2 rounded-xl border-2 p-4 text-left transition-all",
+                            selected
+                              ? "border-primary bg-primary/5"
+                              : "border-border/50 bg-background/30 hover:border-border hover:bg-muted/30",
+                          )}
+                        >
+                          {selected && (
+                            <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                              <CheckCircle2Icon className="h-3.5 w-3.5" />
+                            </span>
+                          )}
+                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-sm font-bold text-muted-foreground">
+                            {exposant.company.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 pr-6">
+                            <p className="truncate text-sm font-semibold leading-tight">
+                              {exposant.company}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {exposant.name}
+                            </p>
+                            <span className="mt-1.5 inline-block rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                              Stand {exposant.standNumber}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

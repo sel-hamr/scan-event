@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { EditUserDrawer } from "@/components/networking/edit-user-drawer";
 import {
@@ -35,6 +34,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -194,8 +194,8 @@ export default async function NetworkingUserDetailsPage({
   }
 
   // Check if the current viewer is a SUPER_ADMIN
-  const cookieStore = await cookies();
-  const viewerRole = cookieStore.get("userRole")?.value;
+  const auth = await getAuthFromCookieStore();
+  const viewerRole = auth?.role;
   const isSuperAdmin = viewerRole === "SUPER_ADMIN";
 
   // Fetch all companies for the Organizer company selector
@@ -232,9 +232,24 @@ export default async function NetworkingUserDetailsPage({
   const roleColor = roleColors[user.role] ?? "bg-muted text-muted-foreground";
 
   const detailRows = [
-    { icon: <Mail className="h-4 w-4" />, label: "Email", value: user.email, mono: false },
-    { icon: <Phone className="h-4 w-4" />, label: "Phone", value: user.phone || "Not provided", mono: false },
-    { icon: <Shield className="h-4 w-4" />, label: "Role", value: roleLabels[user.role] ?? user.role, mono: false },
+    {
+      icon: <Mail className="h-4 w-4" />,
+      label: "Email",
+      value: user.email,
+      mono: false,
+    },
+    {
+      icon: <Phone className="h-4 w-4" />,
+      label: "Phone",
+      value: user.phone || "Not provided",
+      mono: false,
+    },
+    {
+      icon: <Shield className="h-4 w-4" />,
+      label: "Role",
+      value: roleLabels[user.role] ?? user.role,
+      mono: false,
+    },
     {
       icon: <Building2 className="h-4 w-4" />,
       label: "Company",
@@ -243,7 +258,15 @@ export default async function NetworkingUserDetailsPage({
       mono: false,
     },
     ...(user.company?.website
-      ? [{ icon: <Globe className="h-4 w-4" />, label: "Website", value: user.company.website, href: user.company.website, mono: false }]
+      ? [
+          {
+            icon: <Globe className="h-4 w-4" />,
+            label: "Website",
+            value: user.company.website,
+            href: user.company.website,
+            mono: false,
+          },
+        ]
       : []),
   ];
 
@@ -252,7 +275,7 @@ export default async function NetworkingUserDetailsPage({
       {/* Dynamic Background Blobs */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-primary/10 via-secondary/10 to-transparent -z-10 rounded-full blur-[100px]" />
       <div className="absolute bottom-[20%] left-0 w-[400px] h-[400px] bg-gradient-to-tr from-accent/10 to-transparent -z-10 rounded-full blur-[100px]" />
-      
+
       {/* Back button + admin actions */}
       <div className="flex items-center justify-between">
         <Link href="/networking/users">
@@ -285,11 +308,21 @@ export default async function NetworkingUserDetailsPage({
       {/* ===== HERO PROFILE BANNER ===== */}
       <div className="relative rounded-3xl overflow-hidden border border-border/40 shadow-2xl group transition-all duration-700 hover:shadow-primary/10">
         {/* Animated background gradient */}
-        <div className={cn("absolute inset-0 bg-gradient-to-br opacity-20 group-hover:opacity-30 transition-opacity duration-1000", gradient)} />
+        <div
+          className={cn(
+            "absolute inset-0 bg-gradient-to-br opacity-20 group-hover:opacity-30 transition-opacity duration-1000",
+            gradient,
+          )}
+        />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.05)_0%,_transparent_60%)]" />
 
         {/* Gradient stripe top */}
-        <div className={cn("absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r opacity-60", gradient)} />
+        <div
+          className={cn(
+            "absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r opacity-60",
+            gradient,
+          )}
+        />
 
         {/* Content */}
         <div className="relative p-8 lg:p-10">
@@ -298,11 +331,19 @@ export default async function NetworkingUserDetailsPage({
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6">
               {/* Avatar with glowing ring */}
               <div className="relative">
-                <div className={cn("absolute -inset-1 rounded-full bg-gradient-to-br opacity-40 blur-md", gradient)} />
+                <div
+                  className={cn(
+                    "absolute -inset-1 rounded-full bg-gradient-to-br opacity-40 blur-md",
+                    gradient,
+                  )}
+                />
                 <Avatar className="relative h-24 w-24 border-2 border-background shadow-xl ring-2 ring-border/30">
                   <AvatarImage src={user.avatar || undefined} />
                   <AvatarFallback
-                    className={cn("bg-gradient-to-br text-white text-2xl font-black", gradient)}
+                    className={cn(
+                      "bg-gradient-to-br text-white text-2xl font-black",
+                      gradient,
+                    )}
                   >
                     {initials}
                   </AvatarFallback>
@@ -312,12 +353,18 @@ export default async function NetworkingUserDetailsPage({
               <div className="space-y-3">
                 <div>
                   <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-4xl font-black tracking-tight">{user.name}</h1>
+                    <h1 className="text-4xl font-black tracking-tight">
+                      {user.name}
+                    </h1>
                     <Badge
                       variant="outline"
-                      className={cn("rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider", roleColor)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider",
+                        roleColor,
+                      )}
                     >
-                      {roleEmojis[user.role]} {roleLabels[user.role] ?? user.role}
+                      {roleEmojis[user.role]}{" "}
+                      {roleLabels[user.role] ?? user.role}
                     </Badge>
                   </div>
                   <p className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
@@ -348,16 +395,28 @@ export default async function NetworkingUserDetailsPage({
             {/* Right: quick stats */}
             <div className="flex gap-6 sm:gap-8 shrink-0">
               <div className="text-center">
-                <p className="text-3xl font-black tabular-nums">{user.tickets.length}</p>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">Tickets</p>
+                <p className="text-3xl font-black tabular-nums">
+                  {user.tickets.length}
+                </p>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">
+                  Tickets
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-black tabular-nums">{acceptedConnections}</p>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">Connections</p>
+                <p className="text-3xl font-black tabular-nums">
+                  {acceptedConnections}
+                </p>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">
+                  Connections
+                </p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-black tabular-nums">{formatCurrency(totalSpent)}</p>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">Total Spent</p>
+                <p className="text-3xl font-black tabular-nums">
+                  {formatCurrency(totalSpent)}
+                </p>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1">
+                  Total Spent
+                </p>
               </div>
             </div>
           </div>
@@ -404,7 +463,9 @@ export default async function NetworkingUserDetailsPage({
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardContent className="p-5 relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-muted-foreground font-medium">{kpi.label}</p>
+                <p className="text-sm text-muted-foreground font-medium">
+                  {kpi.label}
+                </p>
                 <div className={cn("p-2 rounded-xl", kpi.bg, kpi.color)}>
                   {kpi.icon}
                 </div>
@@ -446,12 +507,19 @@ export default async function NetworkingUserDetailsPage({
                         {row.value}
                       </a>
                     ) : (
-                      <p className={cn("font-medium text-sm break-all", row.mono && "font-mono")}>
+                      <p
+                        className={cn(
+                          "font-medium text-sm break-all",
+                          row.mono && "font-mono",
+                        )}
+                      >
                         {row.value}
                       </p>
                     )}
                     {row.sub && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{row.sub}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {row.sub}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -479,7 +547,9 @@ export default async function NetworkingUserDetailsPage({
                     key={stat.label}
                     className="rounded-xl bg-muted/20 border border-border/30 p-3 text-center"
                   >
-                    <p className="text-2xl font-black tabular-nums">{stat.value}</p>
+                    <p className="text-2xl font-black tabular-nums">
+                      {stat.value}
+                    </p>
                     <p className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mt-1">
                       {stat.label}
                     </p>
@@ -500,7 +570,9 @@ export default async function NetworkingUserDetailsPage({
                   Ticket History
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  {user.tickets.length} ticket{user.tickets.length !== 1 ? "s" : ""} · {formatCurrency(totalSpent)} total
+                  {user.tickets.length} ticket
+                  {user.tickets.length !== 1 ? "s" : ""} ·{" "}
+                  {formatCurrency(totalSpent)} total
                 </CardDescription>
               </div>
             </div>
@@ -511,7 +583,9 @@ export default async function NetworkingUserDetailsPage({
                 <div className="p-4 rounded-2xl bg-muted/20 text-muted-foreground">
                   <TicketIcon className="h-8 w-8" />
                 </div>
-                <p className="text-sm text-muted-foreground">No tickets found for this user.</p>
+                <p className="text-sm text-muted-foreground">
+                  No tickets found for this user.
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-border/40">

@@ -1,64 +1,40 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthFromCookieStore } from "@/lib/jwt-auth";
+import { verifyAuthToken } from "@/lib/jwt-auth";
 import { NotificationType } from "@prisma/client";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const eventId = searchParams.get("eventId") || "";
+function extractBearerToken(authorizationHeader: string | null) {
+  if (!authorizationHeader) {
+    return null;
+  }
 
-  const events = await prisma.event.findMany({
-    select: {
-      id: true,
-      title: true,
-      ticketsSold: true,
-    },
-    orderBy: { dateStart: "desc" },
-  });
+  const [scheme, token] = authorizationHeader.trim().split(/\s+/, 2);
 
-  const selectedEventId = eventId || events[0]?.id;
+  if (!scheme || !token || scheme.toLowerCase() !== "bearer") {
+    return null;
+  }
 
-  const tickets = selectedEventId
-    ? await prisma.ticket.findMany({
-        where: {
-          eventId: selectedEventId,
-          status: "ACTIVE",
-          userId: { not: null },
-        },
-        include: {
-          user: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      })
-    : [];
-
-  return NextResponse.json({
-    events,
-    selectedEventId,
-    tickets: tickets.map((ticket) => ({
-      id: ticket.id,
-      type: ticket.type,
-      eventId: ticket.eventId,
-      userName: ticket.user?.name || "Unknown",
-    })),
-  });
+  return token;
 }
 
 export async function POST(request: Request) {
   try {
-    const auth = await getAuthFromCookieStore();
-    const userId = auth?.userId;
-    const userRole = auth?.role;
+    const token = extractBearerToken(request.headers.get("authorization"));
 
-    if (!userId || !userRole) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    if (!["SCANNER", "ORGANISATEUR", "SUPER_ADMIN"].includes(userRole)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const auth = await verifyAuthToken(token);
+    if (!auth?.userId || !auth.role) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    if (auth.role !== "SCANNER") {
+      return NextResponse.json(
+        { error: "Forbidden. SCANNER role is required." },
+        { status: 403 },
+      );
     }
 
     const body = await request.json();
@@ -69,6 +45,13 @@ export async function POST(request: Request) {
     if (!code) {
       return NextResponse.json(
         { error: "Ticket code is required." },
+        { status: 400 },
+      );
+    }
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: "Event ID is required." },
         { status: 400 },
       );
     }
@@ -192,7 +175,7 @@ export async function POST(request: Request) {
       ? qrCode.scannedAt
       : (fallbackTicket!.qrCodes[0]?.scannedAt ?? null);
 
-    if (eventId && resolvedEventId !== eventId) {
+    if (resolvedEventId !== eventId) {
       return NextResponse.json(
         { error: "This ticket is not for the selected event." },
         { status: 400 },
@@ -227,7 +210,6 @@ export async function POST(request: Request) {
     }
 
     const scannedAt = new Date();
-
     const ticketId = qrCode ? qrCode.ticket.id : fallbackTicket!.id;
 
     await prisma.$transaction(async (tx) => {
@@ -237,7 +219,7 @@ export async function POST(request: Request) {
           data: {
             scanned: true,
             scannedAt,
-            scannedBy: userId,
+            scannedBy: auth.userId,
           },
         });
       } else {
@@ -246,7 +228,7 @@ export async function POST(request: Request) {
           update: {
             scanned: true,
             scannedAt,
-            scannedBy: userId,
+            scannedBy: auth.userId,
             ticketId,
           },
           create: {
@@ -254,7 +236,7 @@ export async function POST(request: Request) {
             ticketId,
             scanned: true,
             scannedAt,
-            scannedBy: userId,
+            scannedBy: auth.userId,
           },
         });
       }
@@ -307,8 +289,7 @@ export async function POST(request: Request) {
         scannedAt,
       },
     });
-  } catch (error) {
-    console.error("Failed to validate ticket:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to validate ticket." },
       { status: 500 },

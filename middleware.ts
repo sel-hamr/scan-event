@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getAuthFromRequest } from "@/lib/jwt-auth";
 
-export function middleware(request: NextRequest) {
-  const userId = request.cookies.get("userId")?.value;
-  const userRole = request.cookies.get("userRole")?.value;
+export async function middleware(request: NextRequest) {
+  const auth = await getAuthFromRequest(request);
+  const userId = auth?.userId;
+  const userRole = auth?.role;
   const { pathname } = request.nextUrl;
   const isParticipantTicketRoute =
     pathname === "/tickets/mine" || pathname.startsWith("/tickets/mine/");
@@ -31,7 +33,6 @@ export function middleware(request: NextRequest) {
     "/exposants",
     "/sponsors",
     "/companies",
-    "/settings",
     "/events/create",
   ];
 

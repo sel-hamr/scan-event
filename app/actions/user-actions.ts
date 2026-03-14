@@ -3,8 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function registerUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -48,8 +48,8 @@ export async function registerUser(formData: FormData) {
 }
 
 export async function updateUser(formData: FormData) {
-  const cookieStore = await cookies();
-  const callerRole = cookieStore.get("userRole")?.value;
+  const auth = await getAuthFromCookieStore();
+  const callerRole = auth?.role;
 
   if (callerRole !== "SUPER_ADMIN") {
     return { error: "Unauthorized. Only Super Admins can edit users." };
@@ -79,7 +79,9 @@ export async function updateUser(formData: FormData) {
 
   // Validate company exists when provided
   if (companyId) {
-    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+    });
     if (!company) {
       return { error: "Selected company does not exist." };
     }

@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +34,9 @@ const getStatusBadgeVariant = (status: string) => {
 };
 
 export default async function MyEventsPage() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const auth = await getAuthFromCookieStore();
+  const userId = auth?.userId;
+  const userRole = auth?.role;
 
   if (!userId) {
     redirect("/login");

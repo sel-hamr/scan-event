@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
@@ -37,6 +36,7 @@ import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import { BuyTicketButton } from "@/components/buy-ticket-button";
 import { EditEventDrawer } from "@/components/events/edit-event-drawer";
 import { EventManagementTabs } from "@/components/events/event-management-tabs";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -66,9 +66,9 @@ export default async function EventDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const cookieStore = await cookies();
-  const currentRole = cookieStore.get("userRole")?.value;
-  const currentUserId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const currentRole = auth?.role;
+  const currentUserId = auth?.userId;
 
   const canBuyTicket = ["PARTICIPANT", "SCANNER", "SPEAKER"].includes(
     currentRole ?? "",

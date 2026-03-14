@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const auth = await getAuthFromCookieStore();
+  const userId = auth?.userId;
+  const userRole = auth?.role;
 
   let currentUser: { role: string; companyId: string | null } | null = userRole
     ? { role: userRole, companyId: null }
@@ -22,7 +22,7 @@ export async function GET() {
     }
   }
 
-  const [companies, speakers, sponsors, exposants] = await Promise.all([
+  const [companies, speakers, rawSponsors, rawExposants] = await Promise.all([
     prisma.company.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
@@ -45,6 +45,24 @@ export async function GET() {
       orderBy: { company: "asc" },
     }),
   ]);
+
+  const sponsors = Array.from(
+    new Map(
+      rawSponsors.map((sponsor) => [
+        `${sponsor.name}::${sponsor.company}::${sponsor.tier}`,
+        sponsor,
+      ]),
+    ).values(),
+  );
+
+  const exposants = Array.from(
+    new Map(
+      rawExposants.map((exposant) => [
+        `${exposant.name}::${exposant.company}::${exposant.standNumber}`,
+        exposant,
+      ]),
+    ).values(),
+  );
 
   return NextResponse.json({
     companies,

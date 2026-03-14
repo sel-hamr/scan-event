@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const userId = auth?.userId;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,8 +30,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const userId = auth?.userId;
 
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

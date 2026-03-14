@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { EventStatus, TicketType } from "@prisma/client";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId")?.value;
-  const userRole = cookieStore.get("userRole")?.value;
+  const auth = await getAuthFromCookieStore();
+  const userId = auth?.userId;
+  const userRole = auth?.role;
 
   if (!userId || !userRole) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -127,94 +127,110 @@ export async function PATCH(
   });
 
   if (sessionsInput) {
+    let roomId: string | undefined;
+
     const firstRoom = await prisma.room.findFirst({
       where: { eventId: id },
       select: { id: true },
       orderBy: { name: "asc" },
     });
 
-    const roomId = firstRoom?.id;
-    if (roomId) {
-      const existingSessions = await prisma.session.findMany({
-        where: { eventId: id },
+    if (firstRoom) {
+      roomId = firstRoom.id;
+    } else {
+      // Create a default room if none exists so sessions can be saved
+      const newRoom = await prisma.room.create({
+        data: { eventId: id, name: "Main Room", capacity: 0 },
         select: { id: true },
       });
+      roomId = newRoom.id;
+    }
 
-      const existingSessionIds = new Set(
-        existingSessions.map((session) => session.id),
-      );
-      const incomingSessionIds = new Set<string>();
+    const existingSessions = await prisma.session.findMany({
+      where: { eventId: id },
+      select: { id: true },
+    });
 
-      for (const rawSession of sessionsInput) {
-        const sessionId =
-          typeof rawSession?.id === "string" ? rawSession.id.trim() : "";
-        const title =
-          typeof rawSession?.title === "string" ? rawSession.title.trim() : "";
-        const description =
-          typeof rawSession?.description === "string"
-            ? rawSession.description.trim()
-            : "";
-        const speakerId =
-          typeof rawSession?.speakerId === "string"
-            ? rawSession.speakerId.trim()
-            : "";
-        const start =
-          typeof rawSession?.start === "string" ? rawSession.start.trim() : "";
-        const end =
-          typeof rawSession?.end === "string" ? rawSession.end.trim() : "";
+    const existingSessionIds = new Set(
+      existingSessions.map((session) => session.id),
+    );
+    const incomingSessionIds = new Set<string>();
 
-        if (!title || !speakerId || !start || !end) {
-          continue;
-        }
+    for (const rawSession of sessionsInput) {
+      const sessionId =
+        typeof rawSession?.id === "string" ? rawSession.id.trim() : "";
+      const title =
+        typeof rawSession?.title === "string" ? rawSession.title.trim() : "";
+      const description =
+        typeof rawSession?.description === "string"
+          ? rawSession.description.trim()
+          : "";
+      const speakerId =
+        typeof rawSession?.speakerId === "string"
+          ? rawSession.speakerId.trim()
+          : "";
+      const start =
+        typeof rawSession?.start === "string" ? rawSession.start.trim() : "";
+      const end =
+        typeof rawSession?.end === "string" ? rawSession.end.trim() : "";
 
-        const parsedStart = new Date(start);
-        const parsedEnd = new Date(end);
-        if (
-          Number.isNaN(parsedStart.getTime()) ||
-          Number.isNaN(parsedEnd.getTime())
-        ) {
-          continue;
-        }
-
-        if (sessionId && existingSessionIds.has(sessionId)) {
-          incomingSessionIds.add(sessionId);
-          await prisma.session.update({
-            where: { id: sessionId },
-            data: {
-              title,
-              description,
-              speakerId,
-              start: parsedStart,
-              end: parsedEnd,
-              roomId,
-            },
-          });
-        } else {
-          const created = await prisma.session.create({
-            data: {
-              eventId: id,
-              roomId,
-              speakerId,
-              title,
-              description,
-              start: parsedStart,
-              end: parsedEnd,
-            },
-            select: { id: true },
-          });
-          incomingSessionIds.add(created.id);
-        }
+      if (!title || !speakerId || !start || !end) {
+        return NextResponse.json(
+          { error: "Each session requires a title, speaker, start, and end." },
+          { status: 400 },
+        );
       }
 
-      const sessionsToDelete = existingSessions
-        .filter((session) => !incomingSessionIds.has(session.id))
-        .map((session) => session.id);
+      const parsedStart = new Date(start);
+      const parsedEnd = new Date(end);
+      if (
+        Number.isNaN(parsedStart.getTime()) ||
+        Number.isNaN(parsedEnd.getTime())
+      ) {
+        return NextResponse.json(
+          { error: "One or more session dates are invalid." },
+          { status: 400 },
+        );
+      }
 
-      if (sessionsToDelete.length > 0) {
-        await prisma.session.deleteMany({
-          where: { id: { in: sessionsToDelete } },
+      if (sessionId && existingSessionIds.has(sessionId)) {
+        incomingSessionIds.add(sessionId);
+        await prisma.session.update({
+          where: { id: sessionId },
+          data: {
+            title,
+            description,
+            speakerId,
+            start: parsedStart,
+            end: parsedEnd,
+            roomId,
+          },
         });
+      } else {
+        const created = await prisma.session.create({
+          data: {
+            eventId: id,
+            roomId,
+            speakerId,
+            title,
+            description,
+            start: parsedStart,
+            end: parsedEnd,
+          },
+          select: { id: true },
+        });
+        incomingSessionIds.add(created.id);
       }
+    }
+
+    const sessionsToDelete = existingSessions
+      .filter((session) => !incomingSessionIds.has(session.id))
+      .map((session) => session.id);
+
+    if (sessionsToDelete.length > 0) {
+      await prisma.session.deleteMany({
+        where: { id: { in: sessionsToDelete } },
+      });
     }
   }
 

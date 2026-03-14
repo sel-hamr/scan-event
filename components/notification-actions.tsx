@@ -2,28 +2,42 @@
 
 import { Button } from "@/components/ui/button";
 import { MoreHorizontalIcon } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { markAsRead, deleteNotification, toggleReadStatus, markAllAsRead } from "@/app/actions/notification-actions";
+import {
+  markAsRead,
+  deleteNotification,
+  toggleReadStatus,
+  markAllAsRead,
+} from "@/app/actions/notification-actions";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useNotificationStore } from "@/stores";
 
 interface NotificationActionsProps {
   notificationId: string;
   isRead: boolean;
 }
 
-export function NotificationActions({ notificationId, isRead }: NotificationActionsProps) {
+export function NotificationActions({
+  notificationId,
+  isRead,
+}: NotificationActionsProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { setUnreadCount } = useNotificationStore();
 
   const handleMarkAsRead = async () => {
     setIsLoading(true);
     try {
-      await markAsRead(notificationId);
+      const result = await markAsRead(notificationId);
+      setUnreadCount(result.unreadCount);
+      router.refresh();
     } catch (error) {
       console.error("Failed to mark notification as read", error);
     } finally {
@@ -34,7 +48,9 @@ export function NotificationActions({ notificationId, isRead }: NotificationActi
   const handleToggleRead = async () => {
     setIsLoading(true);
     try {
-      await toggleReadStatus(notificationId, isRead);
+      const result = await toggleReadStatus(notificationId, isRead);
+      setUnreadCount(result.unreadCount);
+      router.refresh();
     } catch (error) {
       console.error("Failed to toggle notification status", error);
     } finally {
@@ -44,10 +60,12 @@ export function NotificationActions({ notificationId, isRead }: NotificationActi
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this notification?")) return;
-    
+
     setIsLoading(true);
     try {
-      await deleteNotification(notificationId);
+      const result = await deleteNotification(notificationId);
+      setUnreadCount(result.unreadCount);
+      router.refresh();
     } catch (error) {
       console.error("Failed to delete notification", error);
     } finally {
@@ -58,9 +76,9 @@ export function NotificationActions({ notificationId, isRead }: NotificationActi
   return (
     <div className="flex items-center gap-2">
       {!isRead && (
-        <Button 
-          variant="secondary" 
-          size="sm" 
+        <Button
+          variant="secondary"
+          size="sm"
           className="h-7 text-xs rounded-lg bg-primary/10 text-primary hover:bg-primary/20"
           onClick={handleMarkAsRead}
           disabled={isLoading}
@@ -68,12 +86,12 @@ export function NotificationActions({ notificationId, isRead }: NotificationActi
           Mark as read
         </Button>
       )}
-      
+
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-8 w-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground shrink-0"
             disabled={isLoading}
           >
@@ -96,11 +114,15 @@ export function NotificationActions({ notificationId, isRead }: NotificationActi
 
 export function MarkAllReadButton({ userId }: { userId: string }) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { setUnreadCount } = useNotificationStore();
 
   const handleMarkAllRecent = async () => {
     setIsLoading(true);
     try {
-      await markAllAsRead(userId);
+      const result = await markAllAsRead(userId);
+      setUnreadCount(result.unreadCount);
+      router.refresh();
     } catch (error) {
       console.error("Failed to mark all as read", error);
     } finally {
@@ -109,8 +131,8 @@ export function MarkAllReadButton({ userId }: { userId: string }) {
   };
 
   return (
-    <Button 
-      variant="outline" 
+    <Button
+      variant="outline"
       className="shrink-0 rounded-xl"
       onClick={handleMarkAllRecent}
       disabled={isLoading}

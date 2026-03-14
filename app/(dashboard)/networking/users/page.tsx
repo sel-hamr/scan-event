@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import {
   NetworkIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +73,8 @@ function getAvatarGradient(name: string) {
 export default async function NetworkingUsersPage({
   searchParams,
 }: UsersPageProps) {
-  const cookieStore = await cookies();
-  const currentUserId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const currentUserId = auth?.userId;
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const query =
     typeof resolvedSearchParams?.q === "string"
@@ -225,17 +225,26 @@ export default async function NetworkingUsersPage({
         <div className="flex items-center gap-2 text-muted-foreground">
           <NetworkIcon className="h-4 w-4" />
           <span>
-            <span className="font-semibold text-foreground">{users.length}</span>{" "}
+            <span className="font-semibold text-foreground">
+              {users.length}
+            </span>{" "}
             {users.length === 1 ? "person" : "people"} found
           </span>
         </div>
         {query && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              Filtering: <span className="font-medium text-foreground">&quot;{query}&quot;</span>
+              Filtering:{" "}
+              <span className="font-medium text-foreground">
+                &quot;{query}&quot;
+              </span>
             </span>
             <Link href="/networking/users">
-              <Button variant="ghost" size="sm" className="h-7 rounded-lg text-xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 rounded-lg text-xs"
+              >
                 Clear
               </Button>
             </Link>
@@ -253,7 +262,8 @@ export default async function NetworkingUsersPage({
             <div className="space-y-1.5">
               <h2 className="text-lg font-semibold">No users found</h2>
               <p className="text-sm text-muted-foreground max-w-xs">
-                Try a different search term or clear the filter to browse everyone.
+                Try a different search term or clear the filter to browse
+                everyone.
               </p>
             </div>
             {query && (
@@ -268,7 +278,8 @@ export default async function NetworkingUsersPage({
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {users.map((user) => {
-            const relationStatus = relationStatusByUserId.get(user.id) ?? "NONE";
+            const relationStatus =
+              relationStatusByUserId.get(user.id) ?? "NONE";
             const gradient = getAvatarGradient(user.name);
             const initials = user.name
               .split(" ")
@@ -283,7 +294,12 @@ export default async function NetworkingUsersPage({
                 className="group relative flex flex-col rounded-3xl border border-border/50 bg-card/60 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-border/80 overflow-hidden"
               >
                 {/* Top accent gradient strip */}
-                <div className={cn("h-1 w-full bg-gradient-to-r opacity-70", gradient)} />
+                <div
+                  className={cn(
+                    "h-1 w-full bg-gradient-to-r opacity-70",
+                    gradient,
+                  )}
+                />
 
                 <div className="flex flex-col flex-1 p-6 gap-5">
                   {/* Avatar + Name row */}
@@ -326,24 +342,29 @@ export default async function NetworkingUsersPage({
                       variant="outline"
                       className={cn(
                         "shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                        roleColors[user.role] ?? "bg-muted text-muted-foreground",
+                        roleColors[user.role] ??
+                          "bg-muted text-muted-foreground",
                       )}
                     >
-                      {roleEmojis[user.role]} {roleLabels[user.role] ?? user.role}
+                      {roleEmojis[user.role]}{" "}
+                      {roleLabels[user.role] ?? user.role}
                     </Badge>
                   </div>
 
                   {/* Company */}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Building2Icon className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{user.company?.name ?? "No company"}</span>
+                    <span className="truncate">
+                      {user.company?.name ?? "No company"}
+                    </span>
                   </div>
 
                   {/* Stats strip */}
                   <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border/40 bg-muted/20 p-3 text-center">
                     <div>
                       <p className="text-base font-bold leading-none tabular-nums">
-                        {user._count.sentRequests + user._count.receivedRequests}
+                        {user._count.sentRequests +
+                          user._count.receivedRequests}
                       </p>
                       <p className="mt-1 text-[9px] uppercase font-semibold tracking-wider text-muted-foreground">
                         Connections
@@ -364,7 +385,9 @@ export default async function NetworkingUsersPage({
                         ) : relationStatus === "OUTGOING_PENDING" ? (
                           <ClockIcon className="h-4 w-4 text-amber-500" />
                         ) : (
-                          <span className="text-base font-bold leading-none text-muted-foreground/30">—</span>
+                          <span className="text-base font-bold leading-none text-muted-foreground/30">
+                            —
+                          </span>
                         )}
                       </div>
                       <p className="mt-1 text-[9px] uppercase font-semibold tracking-wider text-muted-foreground">
@@ -375,7 +398,10 @@ export default async function NetworkingUsersPage({
 
                   {/* Actions */}
                   <div className="flex flex-col gap-2 mt-auto">
-                    <Link href={`/networking/users/${user.id}`} className="block">
+                    <Link
+                      href={`/networking/users/${user.id}`}
+                      className="block"
+                    >
                       <Button
                         variant="outline"
                         className="w-full rounded-xl h-9 gap-2 text-sm group-hover:border-primary/30 group-hover:text-primary transition-colors"
@@ -395,8 +421,8 @@ export default async function NetworkingUsersPage({
                         relationStatus === "OUTGOING_PENDING"
                           ? "Request Pending"
                           : relationStatus === "CONNECTED"
-                          ? "Connected ✓"
-                          : "Connect";
+                            ? "Connected ✓"
+                            : "Connect";
 
                       return (
                         <SendFriendRequestButton

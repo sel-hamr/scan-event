@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { TicketType } from "@prisma/client";
+import { NotificationType, TicketType } from "@prisma/client";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 const validTicketTypes = new Set<TicketType>([
   TicketType.VIP,
@@ -12,8 +12,8 @@ const validTicketTypes = new Set<TicketType>([
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId")?.value;
+    const auth = await getAuthFromCookieStore();
+    const userId = auth?.userId;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -43,6 +43,8 @@ export async function POST(request: Request) {
       where: { id: eventId },
       select: {
         id: true,
+        title: true,
+        organiserId: true,
         attendeesCount: true,
         ticketsSold: true,
         price: true,
@@ -132,6 +134,29 @@ export async function POST(request: Request) {
             increment: price,
           },
         },
+      });
+
+      const notificationTargets = [
+        {
+          userId,
+          title: "Ticket purchased",
+          body: `You bought a ${ticketType} ticket for \"${event.title}\".`,
+          type: NotificationType.SUCCESS,
+        },
+        ...(event.organiserId && event.organiserId !== userId
+          ? [
+              {
+                userId: event.organiserId,
+                title: "New ticket sold",
+                body: `A ${ticketType} ticket was purchased for \"${event.title}\".`,
+                type: NotificationType.INFO,
+              },
+            ]
+          : []),
+      ];
+
+      await tx.notification.createMany({
+        data: notificationTargets,
       });
 
       return assigned;

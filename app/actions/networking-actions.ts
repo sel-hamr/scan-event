@@ -2,11 +2,11 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export async function sendFriendRequest(formData: FormData) {
-  const cookieStore = await cookies();
-  const senderId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const senderId = auth?.userId;
   const receiverId = (formData.get("receiverId") as string | null)?.trim();
   const messageInput = (formData.get("message") as string | null)?.trim();
   const message = messageInput || "I'd like to connect with you.";

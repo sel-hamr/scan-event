@@ -18,10 +18,10 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LogoIcon } from "@/components/icons/logo";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -112,9 +112,7 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-border/50 px-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Sparkles className="h-5 w-5 text-primary-foreground" />
-        </div>
+        <LogoIcon className="h-9 w-9 shrink-0 rounded-lg" aria-hidden="true" />
         {!isCollapsed && (
           <div className="flex flex-col overflow-hidden">
             <span className="text-sm font-bold tracking-tight text-foreground">

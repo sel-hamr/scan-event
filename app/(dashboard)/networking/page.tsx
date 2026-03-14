@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -22,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NetworkingCardActions } from "@/components/networking-card-actions";
+import { getAuthFromCookieStore } from "@/lib/jwt-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +39,8 @@ const getStatusBadgeVariant = (status: string) => {
 };
 
 export default async function NetworkingPage() {
-  const cookieStore = await cookies();
-  const currentUserId = cookieStore.get("userId")?.value;
+  const auth = await getAuthFromCookieStore();
+  const currentUserId = auth?.userId;
 
   const requests = await prisma.networkingRequest.findMany({
     where: {

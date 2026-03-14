@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Moon, Shield, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LogoIcon } from "@/components/icons/logo";
 
 export function PublicNavbar() {
   const [isDark, setIsDark] = useState(() => {
@@ -51,8 +52,8 @@ export function PublicNavbar() {
     <header className="sticky top-0 z-30 border-b border-border/80 bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-8">
         <Link href="/login" className="group flex items-center gap-2.5">
-          <span className="rounded-lg border border-border bg-secondary/70 p-1.5 transition-colors group-hover:bg-secondary">
-            <Shield className="h-4 w-4 text-foreground" />
+          <span className="rounded-lg border border-border bg-secondary/70 p-1 transition-colors group-hover:bg-secondary">
+            <LogoIcon className="h-5 w-5 rounded" aria-hidden="true" />
           </span>
           <div className="leading-tight">
             <p className="text-sm font-semibold tracking-tight">EventScan</p>

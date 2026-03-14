@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { UploadCloudIcon, XCircleIcon } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -94,6 +95,16 @@ export function EditEventDrawer({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBannerUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setForm((prev) => ({ ...prev, banner: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [form, setForm] = useState({
     title: event.title,
@@ -132,6 +143,27 @@ export function EditEventDrawer({
   );
 
   const handleSave = async () => {
+    // Validate sessions before sending
+    for (let i = 0; i < sessions.length; i++) {
+      const s = sessions[i];
+      if (!s.title.trim()) {
+        setError(`Session ${i + 1}: title is required.`);
+        return;
+      }
+      if (!s.speakerId) {
+        setError(`Session ${i + 1}: please select a speaker.`);
+        return;
+      }
+      if (!s.start) {
+        setError(`Session ${i + 1}: start date/time is required.`);
+        return;
+      }
+      if (!s.end) {
+        setError(`Session ${i + 1}: end date/time is required.`);
+        return;
+      }
+    }
+
     setSaving(true);
     setError(null);
 
@@ -281,29 +313,78 @@ export function EditEventDrawer({
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-category">Category</Label>
-              <Input
-                id="edit-category"
-                value={form.category}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, category: e.target.value }))
-                }
-                placeholder="e.g. Conference"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-banner">Banner URL</Label>
-              <Input
-                id="edit-banner"
-                value={form.banner}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, banner: e.target.value }))
-                }
-                placeholder="https://..."
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="edit-category">Category</Label>
+            <Input
+              id="edit-category"
+              value={form.category}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, category: e.target.value }))
+              }
+              placeholder="e.g. Conference"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Banner</Label>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleBannerUpload(file);
+              }}
+            />
+            {form.banner ? (
+              <div className="relative w-full overflow-hidden rounded-xl border border-border/50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.banner}
+                  alt="Event banner preview"
+                  className="h-48 w-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, banner: "" }))}
+                  className="absolute right-2 top-2 rounded-full bg-background/80 p-1 text-destructive shadow-sm backdrop-blur hover:bg-background"
+                  aria-label="Remove image"
+                >
+                  <XCircleIcon className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => bannerInputRef.current?.click()}
+                  className="absolute bottom-2 right-2 rounded-lg bg-background/80 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur hover:bg-background"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => bannerInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file && file.type.startsWith("image/"))
+                    handleBannerUpload(file);
+                }}
+                className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border/50 bg-muted/20 px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/40"
+              >
+                <UploadCloudIcon className="h-10 w-10 text-muted-foreground" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Click to upload or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PNG, JPG, GIF, WEBP up to any size (stored as base64)
+                  </p>
+                </div>
+              </button>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">

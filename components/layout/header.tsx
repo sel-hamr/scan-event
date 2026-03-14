@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useSidebarStore, useNotificationStore } from "@/stores";
@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -48,8 +47,9 @@ const routeLabels: Record<string, string> = {
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { isCollapsed } = useSidebarStore();
-  const { unreadCount } = useNotificationStore();
+  const { unreadCount, setUnreadCount } = useNotificationStore();
   const [isDark, setIsDark] = React.useState(true);
   const [currentUser, setCurrentUser] = React.useState<HeaderUser | null>(null);
   const [loggingOut, setLoggingOut] = React.useState(false);
@@ -59,17 +59,36 @@ export function AppHeader() {
 
     const loadCurrentUser = async () => {
       try {
-        const response = await fetch("/api/me", { cache: "no-store" });
-        if (!response.ok) {
-          if (active) setCurrentUser(null);
+        const [userResponse, unreadResponse] = await Promise.all([
+          fetch("/api/me", { cache: "no-store" }),
+          fetch("/api/notifications/unread-count", { cache: "no-store" }),
+        ]);
+
+        if (!userResponse.ok) {
+          if (active) {
+            setCurrentUser(null);
+            setUnreadCount(0);
+          }
           return;
         }
-        const data = await response.json();
+
+        const data = await userResponse.json();
+        let nextUnreadCount = 0;
+
+        if (unreadResponse.ok) {
+          const unreadData = await unreadResponse.json();
+          nextUnreadCount = Number(unreadData?.unreadCount ?? 0);
+        }
+
         if (active) {
           setCurrentUser(data.user ?? null);
+          setUnreadCount(Number.isNaN(nextUnreadCount) ? 0 : nextUnreadCount);
         }
       } catch {
-        if (active) setCurrentUser(null);
+        if (active) {
+          setCurrentUser(null);
+          setUnreadCount(0);
+        }
       }
     };
 
@@ -78,7 +97,7 @@ export function AppHeader() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [pathname, setUnreadCount]);
 
   const segments = pathname.split("/").filter(Boolean);
 
@@ -110,6 +129,10 @@ export function AppHeader() {
     } finally {
       window.location.href = "/login";
     }
+  };
+
+  const handleViewAccount = () => {
+    router.push("/settings");
   };
 
   const displayName = currentUser?.name ?? "User";
@@ -220,15 +243,15 @@ export function AppHeader() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 rounded-xl">
-            <DropdownMenuLabel className="font-normal">
+            <div className="px-1.5 py-1">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">{displayEmail}</p>
               </div>
-            </DropdownMenuLabel>
+            </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Link href="/settings">Profile & Settings</Link>
+            <DropdownMenuItem onClick={handleViewAccount}>
+              View my account
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -236,7 +259,7 @@ export function AppHeader() {
               onClick={handleLogout}
               disabled={loggingOut}
             >
-              {loggingOut ? "Logging out..." : "Log out"}
+              {loggingOut ? "Logging out..." : "Logout"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

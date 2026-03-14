@@ -1,7 +1,7 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import { AUTH_COOKIE_NAME, signAuthToken } from "@/lib/jwt-auth";
+import { signAuthToken } from "@/lib/jwt-auth";
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +18,15 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, email: true, name: true, role: true, password: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        password: true,
+        avatar: true,
+        phone: true,
+      },
     });
 
     if (!user?.password) {
@@ -28,38 +36,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return NextResponse.json(
         { error: "Invalid credentials." },
         { status: 401 },
       );
     }
 
-    const response = NextResponse.json({
+    const jwt = await signAuthToken({
+      userId: user.id,
+      role: user.role,
+    });
+
+    return NextResponse.json({
       success: true,
+      jwt,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
+        avatar: user.avatar,
+        phone: user.phone,
       },
     });
-
-    const token = await signAuthToken({
-      userId: user.id,
-      role: user.role,
-    });
-
-    response.cookies.set(AUTH_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return response;
   } catch {
     return NextResponse.json(
       { error: "Something went wrong." },
