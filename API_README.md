@@ -1,4 +1,4 @@
-# Event Scan API (v2) - Auth
+# Event Scan API (v2)
 
 Base URL (local): `http://localhost:3000`
 
