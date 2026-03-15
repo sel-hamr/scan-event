@@ -35,8 +35,7 @@ export function PublicNavbar() {
             <LogoIcon className="h-5 w-5 rounded" aria-hidden="true" />
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-semibold tracking-tight">EventScan</p>
-            <p className="text-xs text-muted-foreground">Disconnected mode</p>
+            <p className="text-sm font-semibold tracking-tight">orcheo</p>
           </div>
         </Link>
 
@@ -55,18 +54,6 @@ export function PublicNavbar() {
               <Moon className="h-4 w-4" />
             )}
           </Button>
-          <Link
-            href="/login"
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/register"
-            className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
-          >
-            Create account
-          </Link>
         </div>
       </div>
     </header>

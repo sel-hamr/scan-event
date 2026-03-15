@@ -77,14 +77,14 @@ function LoginContent() {
           <div className="space-y-4">
             <Badge variant="secondary" className="w-fit gap-2 px-3 py-1">
               <Sparkles className="h-3.5 w-3.5" />
-              EventScan Platform
+              orcheo Platform
             </Badge>
             <h1 className="max-w-xl text-4xl font-semibold tracking-tight xl:text-5xl">
               Manage events, attendees, and growth from one dashboard.
             </h1>
             <p className="max-w-md text-muted-foreground">
-              EventScan gives your team a fast, secure workspace to operate
-              events, track sponsors, and streamline check-ins.
+              orcheo gives your team a fast, secure workspace to operate events,
+              track sponsors, and streamline check-ins.
             </p>
           </div>
 
@@ -128,7 +128,7 @@ function LoginContent() {
               </div>
               <CardTitle className="text-2xl">Welcome back</CardTitle>
               <CardDescription>
-                Sign in to continue to your EventScan dashboard.
+                Sign in to continue to your orcheo dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent>

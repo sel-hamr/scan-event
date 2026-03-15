@@ -4,7 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EventScan — Event Management Platform",
+  title: "orcheo — Event Management Platform",
   description:
     "Back-office dashboard for managing events, tickets, speakers, and attendees",
 };

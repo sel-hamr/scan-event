@@ -215,7 +215,7 @@ Authorization: Bearer <JWT_TOKEN>
           "avatar": null,
           "bio": "Senior Engineer",
           "topic": "Modern Web",
-          "company": "EventScan"
+          "company": "orcheo"
         }
       ],
       "sponsors": [
@@ -255,7 +255,7 @@ Authorization: Bearer <JWT_TOKEN>
             "avatar": null,
             "bio": "Senior Engineer",
             "topic": "Modern Web",
-            "company": "EventScan"
+            "company": "orcheo"
           }
         }
       ]
@@ -396,7 +396,7 @@ Examples:
       "price": 100,
       "company": {
         "id": "clc...",
-        "name": "EventScan"
+        "name": "orcheo"
       }
     }
   ]
@@ -454,12 +454,12 @@ Authorization: Bearer <JWT_TOKEN>
     "price": 100,
     "company": {
       "id": "clc...",
-      "name": "EventScan",
+      "name": "orcheo",
       "description": "...",
       "logo": null,
-      "website": "https://eventscan.example",
+      "website": "https://orcheo.example",
       "phone": "+212600000000",
-      "email": "hello@eventscan.example",
+      "email": "hello@orcheo.example",
       "address": "Casablanca"
     },
     "sponsors": [
@@ -499,7 +499,7 @@ Authorization: Bearer <JWT_TOKEN>
           "avatar": null,
           "bio": "Senior Engineer",
           "topic": "Modern Web",
-          "company": "EventScan"
+          "company": "orcheo"
         }
       }
     ],
@@ -511,7 +511,7 @@ Authorization: Bearer <JWT_TOKEN>
         "avatar": null,
         "bio": "Senior Engineer",
         "topic": "Modern Web",
-        "company": "EventScan"
+        "company": "orcheo"
       }
     ],
     "tickets": [
@@ -712,7 +712,7 @@ Authorization: Bearer <JWT_TOKEN>
       "avatar": null,
       "company": {
         "id": "clc...",
-        "name": "EventScan"
+        "name": "orcheo"
       },
       "hasRequest": true,
       "request": {

@@ -7,9 +7,9 @@
   <img src="https://img.shields.io/badge/TailwindCSS-4-06B6D4?style=for-the-badge&logo=tailwindcss" alt="Tailwind" />
 </p>
 
-# 🎫 EventScan — Event Management & Check-In Platform
+# 🎫 orcheo — Event Management & Check-In Platform
 
-> A full-stack, role-aware event management platform built for organizers, sponsors, exhibitors, speakers, and attendees. EventScan streamlines the entire event lifecycle — from creation and ticketing to real-time QR check-in and in-event networking.
+> A full-stack, role-aware event management platform built for organizers, sponsors, exhibitors, speakers, and attendees. orcheo streamlines the entire event lifecycle — from creation and ticketing to real-time QR check-in and in-event networking.
 
 ---
 
@@ -31,7 +31,7 @@
 
 ## Overview
 
-EventScan is a **multi-tenant, role-based SaaS dashboard** designed to operate the full lifecycle of events — from creation and promotion, through ticket sales and attendee registration, to real-time QR-based check-in at the door.
+orcheo is a **multi-tenant, role-based SaaS dashboard** designed to operate the full lifecycle of events — from creation and promotion, through ticket sales and attendee registration, to real-time QR-based check-in at the door.
 
 The platform serves **six distinct user roles**, each receiving a tailored navigation and feature set:
 
@@ -574,5 +574,5 @@ This project is proprietary. All rights reserved.
 ---
 
 <p align="center">
-  <sub>Built with ❤️ by the EventScan team</sub>
+  <sub>Built with ❤️ by the orcheo team</sub>
 </p>

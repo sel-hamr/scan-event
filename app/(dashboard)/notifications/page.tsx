@@ -73,7 +73,7 @@ export default async function NotificationsPage() {
     await prisma.notification.create({
       data: {
         userId,
-        title: "Welcome to EventScan",
+        title: "Welcome to orcheo",
         body: "Your notifications will appear here as you use the platform.",
         type: NotificationType.INFO,
         read: false,

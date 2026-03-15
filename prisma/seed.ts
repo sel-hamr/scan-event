@@ -1,4 +1,15 @@
-import { PrismaClient, UserRole, EventStatus, TicketStatus, TicketType, SponsorTier, RegistrationStatus, NotificationType, NetworkingRequestStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  UserRole,
+  EventStatus,
+  TicketStatus,
+  TicketType,
+  SponsorTier,
+  RegistrationStatus,
+  NotificationType,
+  NetworkingRequestStatus,
+} from "@prisma/client";
+import bcrypt from "bcryptjs";
 import {
   currentUser,
   mockCompanies,
@@ -11,12 +22,14 @@ import {
   mockSponsors,
   mockRegistrations,
   mockNotifications,
-  mockNetworking
+  mockNetworking,
 } from "../lib/mock-data";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const hashedDefaultPassword = await bcrypt.hash("admin123", 10);
+
   console.log("Cleaning up database...");
   await prisma.networkingRequest.deleteMany();
   await prisma.notification.deleteMany();
@@ -43,7 +56,7 @@ async function main() {
         website: comp.website,
         address: comp.address,
         createdAt: new Date(comp.created_at),
-      }
+      },
     });
   }
 
@@ -55,10 +68,11 @@ async function main() {
       name: currentUser.name,
       email: currentUser.email,
       role: currentUser.role.toUpperCase() as UserRole,
+      password: hashedDefaultPassword,
       avatar: currentUser.avatar,
       phone: currentUser.phone,
       companyId: currentUser.company_id,
-    }
+    },
   });
 
   // Extract other mock users from tickets, registrations, etc.
@@ -80,7 +94,8 @@ async function main() {
         name: u.name,
         email: u.email,
         role: "PARTICIPANT",
-      }
+        password: hashedDefaultPassword,
+      },
     });
   }
 
@@ -100,7 +115,7 @@ async function main() {
         attendeesCount: evt.attendees_count,
         ticketsSold: evt.tickets_sold,
         revenue: evt.revenue,
-      }
+      },
     });
   }
 
@@ -116,7 +131,7 @@ async function main() {
         topic: spk.topic,
         company: spk.company,
         eventsCount: spk.events_count,
-      }
+      },
     });
   }
 
@@ -128,7 +143,7 @@ async function main() {
         name: room.name,
         capacity: room.capacity,
         eventId: room.event_id,
-      }
+      },
     });
   }
 
@@ -143,7 +158,7 @@ async function main() {
         roomId: sess.room_id,
         eventId: sess.event_id,
         speakerId: sess.speaker_id,
-      }
+      },
     });
   }
 
@@ -157,7 +172,7 @@ async function main() {
         type: tkt.type.toUpperCase() as TicketType,
         price: tkt.price,
         status: tkt.status.toUpperCase() as TicketStatus,
-      }
+      },
     });
   }
 
@@ -171,7 +186,7 @@ async function main() {
         company: exp.company,
         standNumber: exp.stand_number,
         eventId: exp.event_id,
-      }
+      },
     });
   }
 
@@ -184,7 +199,7 @@ async function main() {
         company: spon.company,
         tier: spon.tier.toUpperCase() as SponsorTier,
         eventId: spon.event_id,
-      }
+      },
     });
   }
 
@@ -197,7 +212,7 @@ async function main() {
         eventId: reg.event_id,
         status: reg.status.toUpperCase() as RegistrationStatus,
         registeredAt: new Date(reg.registered_at),
-      }
+      },
     });
   }
 
@@ -212,7 +227,7 @@ async function main() {
         read: notif.read,
         type: notif.type.toUpperCase() as NotificationType,
         createdAt: new Date(notif.created_at),
-      }
+      },
     });
   }
 
@@ -227,7 +242,7 @@ async function main() {
         status: net.status.toUpperCase() as NetworkingRequestStatus,
         message: net.message,
         createdAt: new Date(net.created_at),
-      }
+      },
     });
   }
 

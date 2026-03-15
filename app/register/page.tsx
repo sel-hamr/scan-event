@@ -57,7 +57,7 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <Badge variant="secondary" className="w-fit gap-2 px-3 py-1">
               <Sparkles className="h-3.5 w-3.5" />
-              Start with EventScan
+              Start with orcheo
             </Badge>
             <h1 className="max-w-xl text-4xl font-semibold tracking-tight xl:text-5xl">
               Launch your event operations stack in minutes.
@@ -104,7 +104,7 @@ export default function RegisterPage() {
               </div>
               <CardTitle className="text-2xl">Get started</CardTitle>
               <CardDescription>
-                Set up your account to access the EventScan platform.
+                Set up your account to access the orcheo platform.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -161,7 +161,7 @@ export interface NetworkingRequest {
 export const currentUser: User = {
   id: "usr_001",
   name: "Sarah El-Hamri",
-  email: "sarah@eventscan.io",
+  email: "sarah@orcheo.io",
   role: "super_admin",
   avatar: "",
   phone: "+212 6 12 34 56 78",
@@ -171,10 +171,10 @@ export const currentUser: User = {
 export const mockCompanies: Company[] = [
   {
     id: "comp_001",
-    name: "EventScan Inc.",
+    name: "orcheo Inc.",
     description: "Leading event management platform",
-    email: "contact@eventscan.io",
-    website: "https://eventscan.io",
+    email: "contact@orcheo.io",
+    website: "https://orcheo.io",
     address: "Casablanca, Morocco",
     created_at: "2024-01-15",
   },

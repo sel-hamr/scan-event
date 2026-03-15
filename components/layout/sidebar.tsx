@@ -126,7 +126,7 @@ export function AppSidebar() {
         {!isCollapsed && (
           <div className="flex flex-col overflow-hidden">
             <span className="text-sm font-bold tracking-tight text-foreground">
-              EventScan
+              orcheo
             </span>
             <span className="text-[11px] text-muted-foreground">
               Management
