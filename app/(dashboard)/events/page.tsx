@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { EventStatus } from "@prisma/client";
 import { getAuthFromCookieStore } from "@/lib/jwt-auth";
+import { getDisplayEventStatus } from "@/lib/event-status";
 
 export const dynamic = "force-dynamic";
 
@@ -119,11 +120,7 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
         ? { organiserId: userId }
         : {
             status: {
-              in: [
-                EventStatus.PUBLISHED,
-                EventStatus.ONGOING,
-                EventStatus.COMPLETED,
-              ],
+              notIn: [EventStatus.DRAFT, EventStatus.CANCELLED],
             },
           };
 
@@ -137,15 +134,41 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       }
     : {};
 
-  const statusWhere = activeStatus
-    ? { status: activeStatus as EventStatus }
-    : {};
+  const now = new Date();
+
+  const statusWhere =
+    activeStatus === "DRAFT"
+      ? { status: EventStatus.DRAFT }
+      : activeStatus === "CANCELLED"
+        ? { status: EventStatus.CANCELLED }
+        : activeStatus === "PUBLISHED"
+          ? {
+              status: {
+                notIn: [EventStatus.DRAFT, EventStatus.CANCELLED],
+              },
+              dateStart: { gt: now },
+            }
+          : activeStatus === "ONGOING"
+            ? {
+                status: {
+                  notIn: [EventStatus.DRAFT, EventStatus.CANCELLED],
+                },
+                dateStart: { lte: now },
+                dateEnd: { gte: now },
+              }
+            : activeStatus === "COMPLETED"
+              ? {
+                  status: {
+                    notIn: [EventStatus.DRAFT, EventStatus.CANCELLED],
+                  },
+                  dateEnd: { lt: now },
+                }
+              : {};
 
   const categoryWhere = activeCategory
     ? { category: { equals: activeCategory, mode: "insensitive" as const } }
     : {};
 
-  const now = new Date();
   const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const monthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const timeWhere =
@@ -253,12 +276,13 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
             />
           </form>
           {canCreateEvent ? (
-            <Link href="/events/create">
-              <Button className="shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create Event
-              </Button>
-            </Link>
+            <Button
+              render={<Link href="/events/create" />}
+              className="shrink-0 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Event
+            </Button>
           ) : null}
         </div>
       </div>
@@ -396,6 +420,12 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => {
+            const displayStatus = getDisplayEventStatus(
+              event.status,
+              event.dateStart,
+              event.dateEnd,
+              now,
+            );
             const ticketStats = ticketStatsByEventId.get(event.id);
             const typeLabel = !ticketStats
               ? "No tickets"
@@ -410,170 +440,172 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
                 : `${formatPrice(ticketStats.minPrice)} - ${formatPrice(ticketStats.maxPrice)}`;
 
             return (
-              <Link
-                href={`/events/${event.id}`}
-                className="group"
+              <Card
                 key={event.id}
+                className="group relative overflow-hidden rounded-2xl border-border/60 bg-card/80 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg"
               >
-                <Card className="overflow-hidden rounded-2xl border-border/60 bg-card/80 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-1.5 hover:shadow-lg group">
-                  <div className="relative h-36 border-b border-border/50 bg-muted">
-                    {event.banner ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={event.banner}
-                        alt={event.title}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-linear-to-br from-primary/20 via-primary/5 to-chart-2/15" />
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-background/70 to-transparent" />
+                <Link
+                  href={`/events/${event.id}`}
+                  aria-label={`Open event ${event.title}`}
+                  className="absolute inset-0 z-10"
+                />
+                <div className="relative h-36 border-b border-border/50 bg-muted">
+                  {event.banner ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={event.banner}
+                      alt={event.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-linear-to-br from-primary/20 via-primary/5 to-chart-2/15" />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-background/70 to-transparent" />
 
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs font-semibold capitalize",
-                          getStatusBadgeVariant(event.status.toLowerCase()),
-                        )}
-                      >
-                        {event.status.toLowerCase()}
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs font-semibold capitalize",
+                        getStatusBadgeVariant(displayStatus),
+                      )}
+                    >
+                      {displayStatus}
+                    </Badge>
+                    {event.category ? (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {event.category}
                       </Badge>
-                      {event.category ? (
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {event.category}
-                        </Badge>
-                      ) : null}
+                    ) : null}
+                  </div>
+
+                  <div className="absolute bottom-4 left-4">
+                    <div className="flex h-14 min-w-14 flex-col items-center justify-center rounded-xl border border-border/60 bg-background/90 p-2 text-foreground shadow-sm">
+                      <span className="text-[10px] font-bold uppercase text-primary leading-none mb-1">
+                        {format(new Date(event.dateStart), "MMM")}
+                      </span>
+                      <span className="text-sm font-bold leading-none">
+                        {format(new Date(event.dateStart), "dd")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <CardHeader className="space-y-2 pb-2 pt-4">
+                  <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors cursor-pointer">
+                    {event.title}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2 min-h-10 text-sm leading-relaxed">
+                    {event.description}
+                  </CardDescription>
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+                    <div className="inline-flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      <span>
+                        {format(new Date(event.dateStart), "dd MMM yyyy")} -{" "}
+                        {format(new Date(event.dateEnd), "dd MMM yyyy")}
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 truncate">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span className="line-clamp-1">{event.location}</span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 truncate">
+                      <Building2 className="h-3.5 w-3.5" />
+                      <span className="line-clamp-1">
+                        {event.company?.name ?? "No company"}
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 truncate">
+                      <User className="h-3.5 w-3.5" />
+                      <span className="line-clamp-1">
+                        {event.organiser?.name ?? "No organiser"}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-2">
+                  <div className="rounded-xl border border-border/60 bg-background/50 p-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Ticket className="h-3.5 w-3.5" /> Tickets sold
+                        </span>
+                        <p className="text-sm font-semibold">
+                          {event.ticketsSold}
+                          <span className="ml-1 text-xs font-normal text-muted-foreground">
+                            / {event.attendeesCount}
+                          </span>
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <TrendingUp className="h-3.5 w-3.5" /> Revenue
+                        </span>
+                        <p className="text-sm font-semibold">
+                          ${(event.revenue / 1000).toFixed(1)}k
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">
+                          Type
+                        </span>
+                        <p className="text-sm font-semibold capitalize">
+                          {typeLabel}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs text-muted-foreground">
+                          Price
+                        </span>
+                        <p className="text-sm font-semibold">{priceLabel}</p>
+                      </div>
                     </div>
 
-                    <div className="absolute bottom-4 left-4">
-                      <div className="flex h-14 min-w-14 flex-col items-center justify-center rounded-xl border border-border/60 bg-background/90 p-2 text-foreground shadow-sm">
-                        <span className="text-[10px] font-bold uppercase text-primary leading-none mb-1">
-                          {format(new Date(event.dateStart), "MMM")}
+                    <div className="mt-3 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Capacity filled</span>
+                        <span>
+                          {event.attendeesCount > 0
+                            ? Math.min(
+                                100,
+                                Math.round(
+                                  (event.ticketsSold / event.attendeesCount) *
+                                    100,
+                                ),
+                              )
+                            : 0}
+                          %
                         </span>
-                        <span className="text-sm font-bold leading-none">
-                          {format(new Date(event.dateStart), "dd")}
-                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{
+                            width: `${
+                              event.attendeesCount > 0
+                                ? Math.min(
+                                    100,
+                                    Math.round(
+                                      (event.ticketsSold /
+                                        event.attendeesCount) *
+                                        100,
+                                    ),
+                                  )
+                                : 0
+                            }%`,
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
-
-                  <CardHeader className="space-y-2 pb-2 pt-4">
-                    <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors cursor-pointer">
-                      {event.title}
-                    </CardTitle>
-                    <CardDescription className="line-clamp-2 min-h-10 text-sm leading-relaxed">
-                      {event.description}
-                    </CardDescription>
-
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                      <div className="inline-flex items-center gap-1.5">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        <span>
-                          {format(new Date(event.dateStart), "dd MMM yyyy")} -{" "}
-                          {format(new Date(event.dateEnd), "dd MMM yyyy")}
-                        </span>
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 truncate">
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span className="line-clamp-1">{event.location}</span>
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 truncate">
-                        <Building2 className="h-3.5 w-3.5" />
-                        <span className="line-clamp-1">
-                          {event.company?.name ?? "No company"}
-                        </span>
-                      </div>
-                      <div className="inline-flex items-center gap-1.5 truncate">
-                        <User className="h-3.5 w-3.5" />
-                        <span className="line-clamp-1">
-                          {event.organiser?.name ?? "No organiser"}
-                        </span>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="pt-2">
-                    <div className="rounded-xl border border-border/60 bg-background/50 p-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Ticket className="h-3.5 w-3.5" /> Tickets sold
-                          </span>
-                          <p className="text-sm font-semibold">
-                            {event.ticketsSold}
-                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                              / {event.attendeesCount}
-                            </span>
-                          </p>
-                        </div>
-
-                        <div className="space-y-1">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <TrendingUp className="h-3.5 w-3.5" /> Revenue
-                          </span>
-                          <p className="text-sm font-semibold">
-                            ${(event.revenue / 1000).toFixed(1)}k
-                          </p>
-                        </div>
-
-                        <div className="space-y-1">
-                          <span className="text-xs text-muted-foreground">
-                            Type
-                          </span>
-                          <p className="text-sm font-semibold capitalize">
-                            {typeLabel}
-                          </p>
-                        </div>
-
-                        <div className="space-y-1">
-                          <span className="text-xs text-muted-foreground">
-                            Price
-                          </span>
-                          <p className="text-sm font-semibold">{priceLabel}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Capacity filled</span>
-                          <span>
-                            {event.attendeesCount > 0
-                              ? Math.min(
-                                  100,
-                                  Math.round(
-                                    (event.ticketsSold / event.attendeesCount) *
-                                      100,
-                                  ),
-                                )
-                              : 0}
-                            %
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{
-                              width: `${
-                                event.attendeesCount > 0
-                                  ? Math.min(
-                                      100,
-                                      Math.round(
-                                        (event.ticketsSold /
-                                          event.attendeesCount) *
-                                          100,
-                                      ),
-                                    )
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

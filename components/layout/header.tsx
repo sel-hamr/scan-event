@@ -110,7 +110,7 @@ export function AppHeader() {
     };
   }, [pathname, setUnreadCount]);
 
-  const segments = pathname.split("/").filter(Boolean);
+  const segments = (pathname ?? "/").split("/").filter(Boolean);
 
   const breadcrumbs = [
     { label: "Dashboard", href: "/" },

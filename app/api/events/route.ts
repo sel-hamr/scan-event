@@ -91,8 +91,9 @@ export async function POST(req: Request) {
     }
 
     const normalizedStatus =
-      typeof status === "string" && status in EventStatus
-        ? (status as EventStatus)
+      typeof status === "string" &&
+      status.trim().toUpperCase() === EventStatus.PUBLISHED
+        ? EventStatus.PUBLISHED
         : EventStatus.DRAFT;
 
     const normalizedSponsorIds = Array.isArray(sponsorIds)

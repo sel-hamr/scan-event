@@ -25,7 +25,14 @@ export async function GET(request: Request) {
     const includeEvents =
       url.searchParams.get("event")?.toLowerCase() === "true";
     const includeSpeakers =
+      includeEvents &&
       url.searchParams.get("speaker")?.toLowerCase() === "true";
+    const includeSponsors =
+      includeEvents &&
+      url.searchParams.get("sponsor")?.toLowerCase() === "true";
+    const includeExposants =
+      includeEvents &&
+      url.searchParams.get("exposant")?.toLowerCase() === "true";
     const includeSessions =
       url.searchParams.get("withsession")?.toLowerCase() === "true";
 
@@ -136,6 +143,32 @@ export async function GET(request: Request) {
                   },
                 }
               : {}),
+            ...(includeSponsors
+              ? {
+                  sponsors: {
+                    select: {
+                      id: true,
+                      name: true,
+                      company: true,
+                      tier: true,
+                      logo: true,
+                    },
+                  },
+                }
+              : {}),
+            ...(includeExposants
+              ? {
+                  exposants: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      company: true,
+                      standNumber: true,
+                    },
+                  },
+                }
+              : {}),
           },
           orderBy: { dateStart: "desc" },
         })
@@ -169,6 +202,18 @@ export async function GET(request: Request) {
             }
 
             eventPayload.speakers = Array.from(speakersById.values());
+          }
+
+          if (includeSponsors) {
+            eventPayload.sponsors = Array.isArray(event.sponsors)
+              ? event.sponsors
+              : [];
+          }
+
+          if (includeExposants) {
+            eventPayload.exposants = Array.isArray(event.exposants)
+              ? event.exposants
+              : [];
           }
 
           return eventPayload;

@@ -22,6 +22,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { Switch } from "@/components/ui/switch";
 
 type EventEditData = {
   id: string;
@@ -62,13 +63,6 @@ type SpeakerOption = {
   name: string;
 };
 
-const statusOptions = [
-  "DRAFT",
-  "PUBLISHED",
-  "ONGOING",
-  "COMPLETED",
-  "CANCELLED",
-];
 const ticketTypeOptions = ["STANDARD", "VIP", "EARLY_BIRD", "FREE"];
 
 function toDateInput(value: string) {
@@ -110,7 +104,7 @@ export function EditEventDrawer({
     title: event.title,
     description: event.description ?? "",
     location: event.location,
-    status: event.status,
+    status: event.status ?? "DRAFT",
     dateStart: toDateInput(event.dateStart),
     dateEnd: toDateInput(event.dateEnd),
     companyId: event.companyId,
@@ -280,27 +274,65 @@ export function EditEventDrawer({
             />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={form.status}
-                onValueChange={(value) =>
-                  setForm((prev) => ({ ...prev, status: value || "" }))
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-background shadow-inner">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="edit-is-draft"
+                  className="text-base font-semibold"
+                >
+                  Draft Status
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Turn off to publish this event.
+                </p>
+              </div>
+              <Switch
+                checked={form.status === "DRAFT"}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    status: checked
+                      ? "DRAFT"
+                      : prev.status === "DRAFT"
+                        ? "PUBLISHED"
+                        : prev.status,
+                  }))
                 }
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                aria-label="Draft status"
+              />
             </div>
+
+            <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-background shadow-inner">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="edit-is-cancelled"
+                  className="text-base font-semibold"
+                >
+                  Cancelled Status
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Turn on to cancel this event.
+                </p>
+              </div>
+              <Switch
+                checked={form.status === "CANCELLED"}
+                onCheckedChange={(checked) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    status: checked
+                      ? "CANCELLED"
+                      : prev.status === "CANCELLED"
+                        ? "DRAFT"
+                        : prev.status,
+                  }))
+                }
+                aria-label="Cancelled status"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="edit-location">Location</Label>
               <Input
@@ -430,7 +462,7 @@ export function EditEventDrawer({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="edit-company">Company</Label>
+            <Label htmlFor="edit-company">Company Name</Label>
             <Select
               value={form.companyId}
               onValueChange={(value) =>
@@ -438,9 +470,15 @@ export function EditEventDrawer({
               }
             >
               <SelectTrigger id="edit-company">
-                <SelectValue placeholder="Select company">
-                  {selectedCompanyName}
-                </SelectValue>
+                {form.companyId ? (
+                  <span className="flex flex-1 text-left text-sm">
+                    {selectedCompanyName ?? form.companyId}
+                  </span>
+                ) : (
+                  <span className="flex flex-1 text-left text-sm text-muted-foreground">
+                    Select company
+                  </span>
+                )}
               </SelectTrigger>
               <SelectContent>
                 {companies.map((company) => (

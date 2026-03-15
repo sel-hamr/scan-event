@@ -80,10 +80,12 @@ export async function PATCH(
     return NextResponse.json({ error: "Company not found." }, { status: 400 });
   }
 
-  const validStatuses = new Set(Object.values(EventStatus));
-  const status = validStatuses.has(rawStatus as EventStatus)
-    ? (rawStatus as EventStatus)
-    : EventStatus.DRAFT;
+  const status =
+    rawStatus === EventStatus.CANCELLED
+      ? EventStatus.CANCELLED
+      : rawStatus === EventStatus.PUBLISHED
+        ? EventStatus.PUBLISHED
+        : EventStatus.DRAFT;
 
   const normalizedTypeTicket = typeTicket ? typeTicket.toUpperCase() : null;
 

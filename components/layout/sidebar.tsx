@@ -62,6 +62,7 @@ const superAdminNavItems = navItems.filter((item) => item.href !== "/scanner");
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const currentPath = pathname ?? "/";
   const { isCollapsed, toggle } = useSidebarStore();
   const [userRole, setUserRole] = React.useState<string | null>(null);
   const [roleLoaded, setRoleLoaded] = React.useState(false);
@@ -138,8 +139,8 @@ export function AppSidebar() {
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {visibleNavItems.map((item) => {
           const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href));
+            currentPath === item.href ||
+            (item.href !== "/" && currentPath.startsWith(item.href));
           const Icon = item.icon;
 
           const linkContent = (

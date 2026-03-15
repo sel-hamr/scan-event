@@ -43,6 +43,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 
 const STEPS = [
   { id: 1, name: "Event Details", description: "Basic info" },
@@ -441,28 +442,30 @@ export default function CreateEventPage() {
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-6">
-                <div className="grid gap-2 w-full">
-                  <Label htmlFor="status">Event Status</Label>
-                  <Select
-                    value={eventDetails.status}
-                    onValueChange={(value: string | null) =>
-                      setEventDetails({
-                        ...eventDetails,
-                        status: value || "DRAFT",
-                      })
-                    }
-                  >
-                    <SelectTrigger className="rounded-xl w-full" id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="DRAFT">Draft</SelectItem>
-                      <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="ONGOING">Ongoing</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-background shadow-inner">
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="is-draft"
+                        className="text-base font-semibold"
+                      >
+                        Draft Status
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Turn off to publish immediately.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={eventDetails.status === "DRAFT"}
+                      onCheckedChange={(checked) =>
+                        setEventDetails((prev) => ({
+                          ...prev,
+                          status: checked ? "DRAFT" : "PUBLISHED",
+                        }))
+                      }
+                      aria-label="Draft status"
+                    />
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="location">Location or URL</Label>

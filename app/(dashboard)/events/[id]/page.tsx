@@ -37,6 +37,7 @@ import { BuyTicketButton } from "@/components/buy-ticket-button";
 import { EditEventDrawer } from "@/components/events/edit-event-drawer";
 import { EventManagementTabs } from "@/components/events/event-management-tabs";
 import { getAuthFromCookieStore } from "@/lib/jwt-auth";
+import { getDisplayEventStatus } from "@/lib/event-status";
 
 export const dynamic = "force-dynamic";
 
@@ -216,6 +217,12 @@ export default async function EventDetailsPage({
           : currentRole === "SPEAKER"
             ? "Speaker view"
             : "Participant view";
+
+  const displayEventStatus = getDisplayEventStatus(
+    event.status,
+    event.dateStart,
+    event.dateEnd,
+  );
 
   const usersWithRoles = [
     {
@@ -479,10 +486,10 @@ export default async function EventDetailsPage({
                 variant="outline"
                 className={cn(
                   "capitalize",
-                  getStatusBadgeVariant(event.status.toLowerCase()),
+                  getStatusBadgeVariant(displayEventStatus),
                 )}
               >
-                {event.status.toLowerCase()}
+                {displayEventStatus}
               </Badge>
               <Badge variant="secondary" className="capitalize">
                 {roleContextLabel}

@@ -53,7 +53,11 @@ export async function GET(request: Request) {
     const category = searchParams.get("category")?.trim() ?? "";
     const companyId = searchParams.get("companyId")?.trim() ?? "";
     const withSpeaker =
-      searchParams.get("speaker")?.trim().toLowerCase() === "true";
+      searchParams.get("speaker")?.trim().toLowerCase() !== "false";
+    const withSponsor =
+      searchParams.get("sponsor")?.trim().toLowerCase() !== "false";
+    const withExposant =
+      searchParams.get("exposant")?.trim().toLowerCase() !== "false";
     const withSession =
       searchParams.get("withsession")?.trim().toLowerCase() === "true";
     const from = toDate(searchParams.get("from"));
@@ -165,6 +169,30 @@ export async function GET(request: Request) {
       };
     }
 
+    if (withSponsor) {
+      (eventSelect as any).sponsors = {
+        select: {
+          id: true,
+          name: true,
+          company: true,
+          tier: true,
+          logo: true,
+        },
+      };
+    }
+
+    if (withExposant) {
+      (eventSelect as any).exposants = {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          company: true,
+          standNumber: true,
+        },
+      };
+    }
+
     const [total, rawEvents] = await Promise.all([
       prisma.event.count({ where }),
       prisma.event.findMany({
@@ -211,6 +239,18 @@ export async function GET(request: Request) {
         nextEvent.speakers = Array.from(speakersById.values());
       }
 
+      if (withSponsor) {
+        nextEvent.sponsors = Array.isArray(event.sponsors)
+          ? event.sponsors
+          : [];
+      }
+
+      if (withExposant) {
+        nextEvent.exposants = Array.isArray(event.exposants)
+          ? event.exposants
+          : [];
+      }
+
       return nextEvent;
     });
 
@@ -227,6 +267,8 @@ export async function GET(request: Request) {
         category: category || null,
         companyId: companyId || null,
         speaker: withSpeaker,
+        sponsor: withSponsor,
+        exposant: withExposant,
         withsession: withSession,
         from: from?.toISOString() ?? null,
         to: to?.toISOString() ?? null,

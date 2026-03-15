@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
 import { getAuthFromCookieStore } from "@/lib/jwt-auth";
+import { getDisplayEventStatus } from "@/lib/event-status";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,11 @@ export default async function MyEventsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((event) => {
+            const displayStatus = getDisplayEventStatus(
+              event.status,
+              event.dateStart,
+              event.dateEnd,
+            );
             const ticketCount = event.tickets.length;
             const totalSpent = event.tickets.reduce(
               (sum, ticket) => sum + ticket.price,
@@ -130,10 +136,10 @@ export default async function MyEventsPage() {
                         variant="outline"
                         className={cn(
                           "text-xs font-semibold capitalize",
-                          getStatusBadgeVariant(event.status),
+                          getStatusBadgeVariant(displayStatus),
                         )}
                       >
-                        {event.status.toLowerCase()}
+                        {displayStatus}
                       </Badge>
                     </div>
 

@@ -209,6 +209,31 @@ The platform serves **six distinct user roles**, each receiving a tailored navig
 | **Client-side fetching** | Dashboard KPIs and lists use `useEffect + fetch` for real-time data          |
 | **Zustand stores**       | Lightweight, zero-boilerplate global state (sidebar, notifications)          |
 
+### API (v2)
+
+Mobile/external API base path: `/api/v2/*`
+
+Protected endpoints use Bearer auth:
+
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
+
+Key endpoints for event details and networking:
+
+- `GET /api/v2/event/:id`
+  - Returns one event with full relations: `company`, `sessions`, `speakers`, `sponsors`, `exposants`, `tickets`, and `ticketCounts`.
+- `GET /api/v2/networking/users`
+  - Lists users for networking with request relation info.
+  - Supports `hasRequest=true|false` filter.
+- `POST /api/v2/networking/request`
+  - Sends a networking request.
+- `PATCH /api/v2/networking/request/:id`
+  - Accepts or refuses/rejects a pending request.
+  - Only request receiver can update status.
+
+For full request/response payloads and examples, see [API_README.md](API_README.md).
+
 ---
 
 ## Technology Stack
